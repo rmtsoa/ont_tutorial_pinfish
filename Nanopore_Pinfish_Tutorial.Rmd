@@ -1,0 +1,217 @@
+---
+title: "Pinfish tutorial - from Nanopore cDNA sequences to annotated genes"
+date: "Report created: `r Sys.Date()`"
+output:
+  html_document:
+    keep_md: yes
+    number_sections: yes
+    self_contained: yes
+    theme: default
+    highlight: null
+    css: Static/ont_tutorial.css
+    toc: yes
+    toc_depth: 2
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+    df_print: paged
+link-citations: yes
+bibliography: Static/Bibliography.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(tidy = FALSE, cache.extra = packageVersion('tufte'))
+options(htmltools.dir.version = FALSE)
+knitr::opts_chunk$set(fig.width=9, fig.height=6, warning=FALSE, message=FALSE)
+
+library(digest)
+library(ggplot2)
+library(knitr)
+library(RColorBrewer)
+library(tufte)
+library(yaml)
+library(ShortRead)   # oh the irony!
+library(kableExtra) 
+library(pdftools)
+
+config <- yaml.load_file("config.yaml")
+tutorialText   <- config$tutorialText
+
+rawData <- config$raw_fastq
+pycData <- config$reads_fastq
+
+slurpContent <- function(filename) {
+  include = as.logical(tutorialText)
+  if (include) {
+    paste(readLines(filename),collapse="\n")
+  }
+}
+```
+
+
+`r slurpContent("Static/TutorialPreamble.md")`
+
+# Results from **`Pinfish`** analysis Tutorial
+
+## Review of starting sequence collections
+
+
+```{r startingData, echo=FALSE}
+ncalc <- function(len.vector, n) {
+  # N50 - length such that scaffolds of this length or longer include half the bases of the assembly
+  len.sorted <- rev(sort(len.vector))
+  len.sorted[cumsum(len.sorted) >= sum(len.sorted)*n][1]
+}
+
+
+lcalc <- function(len.vector, n) {
+  len.sorted <- rev(sort(len.vector))
+  which(cumsum(len.sorted) >= sum(len.sorted)*n)[1]
+}
+
+
+processQCFastq <- function(file) {
+  fastq <- readFastq(file)
+  c(
+    reads = formatC(length(fastq), big.mark=","),
+    mbs = formatC(round(sum(width(fastq)) / 1000 / 1000, digits=1), big.mark=","),
+    min = min(width(fastq)),
+    max = max(width(fastq)),
+    mean = round(mean(width(fastq)), digits=1),
+    median = round(median(width(fastq)), digits=0),
+    qval = round(mean(alphabetScore(fastq) / width(fastq)), digits=1),
+    gc = round(mean(letterFrequency(sread(fastq), "GC")  / width(fastq)) * 100, digits=1),
+    n50 = ncalc(width(fastq), n=0.5),
+    l50 = lcalc(width(fastq), n=0.5),
+    n90 = ncalc(width(fastq), n=0.9),
+    l90 = lcalc(width(fastq), n=0.9)
+  )
+}
+
+data <- lapply(c(rawData, pycData), processQCFastq)
+qcData <- data.frame(data)
+colnames(qcData) <- c("RawData", "PyChopperData")
+
+```
+
+
+
+
+```{r summaryStatsTable, echo=FALSE, cache=TRUE, resize.width=100}
+knitr::kable(qcData, caption="Summary statistics for the cDNA data processed before and after PyChopper filtering", booktabs=TRUE, table.envir='table*', linesep="")  %>%
+  kable_styling(latex_options=c("hold_position", font_size=9)) %>%
+  add_footnote(c(".")) # footnote required for corrected Tufte LaTeX rendering
+```
+
+
+The **`PyChopper`** method used to select for the subset of likely full-length sequence transcripts writes its output to a **`PDF`** file. They key figures from the PDF file are included here.
+
+```{r, results="hide", echo=FALSE}
+pychopperPage1 <- pdf_convert("Analysis/PyChopper/NA12878-cDNA-1D.chr20.filt.pychopper.pdf", pages=1)
+pychopperPage2 <- pdf_convert("Analysis/PyChopper/NA12878-cDNA-1D.chr20.filt.pychopper.pdf", pages=2)
+pychopperPage3 <- pdf_convert("Analysis/PyChopper/NA12878-cDNA-1D.chr20.filt.pychopper.pdf", pages=3)
+```
+
+
+```{r, echo=FALSE, fig.fullwidth=FALSE, message=FALSE}
+knitr::include_graphics(pychopperPage1)
+```
+
+```{r, echo=FALSE, fig.fullwidth=FALSE, message=FALSE}
+knitr::include_graphics(pychopperPage2)
+```
+
+```{r, echo=FALSE, fig.fullwidth=FALSE, message=FALSE}
+knitr::include_graphics(pychopperPage3)
+```
+
+
+```{r lengthdistribution, include=TRUE, cache=FALSE, fig.fullwidth=FALSE, echo=FALSE}
+
+# https://stackoverflow.com/questions/6461209/how-to-round-up-to-the-nearest-10-or-100-or-x
+roundUpNice <- function(x, nice=seq(from=1, to=10, by=0.25)) {
+    if(length(x) != 1) stop("'x' must be of length 1")
+    10^floor(log10(x)) * nice[[which(x <= 10^floor(log10(x)) * nice)[[1]]]]
+}
+
+fastq <- readFastq(rawData)
+sequenceSet <- as.data.frame(cbind(as.character(id(fastq)), width(fastq), alphabetScore(fastq)/width(fastq) ,"Raw"), stringsAsFactors=FALSE)
+colnames(sequenceSet) <- c("seqId", "length", "quality", "set")
+
+pycIds <- gsub(".+ ", "", as.character(id(readFastq(pycData))))
+sequenceSet[which(sequenceSet$seqId %in% pycIds), "set"] <- "PyChopper"
+sequenceSet$length <- as.numeric(sequenceSet$length)
+sequenceSet$quality <- as.numeric(sequenceSet$quality)
+
+upperLimit <- roundUpNice(as.numeric(quantile(x=sequenceSet$length, probs=c(0.995))))
+histogramBinCount <- 40
+breakVal = roundUpNice(upperLimit / histogramBinCount)
+
+breaks <- seq(0, to=upperLimit, by=breakVal)
+
+rawS <- table(cut(subset(sequenceSet, set=="Raw")$length, breaks, include.lowest=TRUE, right=FALSE))
+pycS <- table(cut(subset(sequenceSet, set=="PyChopper")$length, breaks, include.lowest=TRUE, right=FALSE))
+
+lengthDist <- data.frame(length=head(breaks, -1), raw=as.vector(rawS), pychop=as.vector(pycS))
+
+lengthDistMelt <- reshape2::melt(lengthDist, id.vars=c("length"))
+
+ggplot(lengthDistMelt, aes(x=length, fill=variable, y=value)) +
+  geom_bar(stat="identity") +
+  xlab("Read length\n") + ylab("Number of reads\n") +
+  scale_fill_manual("Read QC", values=c("raw"=brewer.pal(6, "Paired")[1], "pychop"=brewer.pal(6, "Paired")[2])) +
+  scale_x_continuous(limits=c(-breakVal,upperLimit), breaks=pretty(sequenceSet$length,n=40)) +
+  labs(title="Histogram showing distribution of read lengths before and after PyChopper filtering", fill="filter")
+
+```
+
+
+# GFFCompare
+
+The [GFFcompare](https://github.com/gpertea/gffcompare) methods provide a collection of tools that can be used to look for overlap and novel features within and between genome annotation **`GFF`** files.
+
+```
+gffcompare -r ReferenceData/Homo_sapiens.GRCh38.94.chromosome.20.gff3 -R -M Analysis/pinfish/polished_transcripts_collapsed.gff
+```
+
+
+```{r, echo=FALSE, comment=""}
+cat(paste(readLines("gffcmp.stats"),collapse="\n"))
+```
+
+
+
+# Glossary of Terms
+
+* __knit__ is the command to render an Rmarkdown file. The knitr package is used to embed code, the results of R analyses and their figures within the typeset text from the document. 
+
+* __L50__  the number of sequences (or contigs etc) that are longer than, or equal to, the N50 length and therefore include half the bases of the assembly
+
+* __N50__  length such that sequences (or contigs etc) of this length or longer include half the bases of the sequence collection
+
+* __Rmarkdown__ is an extension to markdown. Functional R code can be embedded in a plain-text document and subsequently rendered to other formats including the PDF format of this report.
+
+* __QV__  the quality value - -log10(p) that any given base is incorrect. QV may be either at the individual base level, or may be averaged across whole sequences
+
+* __sequencing_summary.txt__ a summary file describing sequence characteristics following base calling with the Guppy / Albacore software.
+
+
+
+# Reproducible Research - Produce your own report
+
+This report has been created using **`Rmarkdown`**, publicly available **`R`** packages, and the \LaTeX document typesetting software for reproducibility. For clarity the **`R`** packages used, and their versions, is listed below.
+
+\fontsize{8}{12}
+
+```{r sessionInfo, eval=TRUE, echo=FALSE, comment=NA}
+options(width = 100)
+utils:::print.sessionInfo(sessionInfo()[-7], locale=FALSE)
+```
+
+\fontsize{10}{14}
+
+
+`r slurpContent("Static/TutorialPostamble.md")`
+
+
+
