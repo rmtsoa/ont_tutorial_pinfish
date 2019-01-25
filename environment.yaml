@@ -21,6 +21,6 @@ dependencies:
   - parasail-python
   - graphviz
   - racon=1.3.2=h9b26653_1  # this is @sagrudd's version - clever SIMD instructions removed
-  - pinfish=190125=b6f3c06
+  - pinfish=190125=b6f3c06_3
   - pip:
     - "--editable=git+https://github.com/nanoporetech/pychopper.git#egg=pychopper"
