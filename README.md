@@ -35,8 +35,7 @@ This tutorial requires a computer running Linux (Centos7, Ubuntu 18_10, Fedora 2
 
 Other dependencies include
 
-* **`git`** packages for downloading the tutorial from Github repository
-* **`git-lfs`**
+* **`bash`** shell  for interacting with the computer
 
 ### Installation:
 
@@ -46,38 +45,25 @@ Other dependencies include
     bash Miniconda3-latest-Linux-x86_64.sh
     bash
 ```
-2. Download Nanopore tutorials & example files into folder named `NanoporeTutorials`. The tutorials are often using distributed with large sequence or metadata files and the [git-lfs](https://git-lfs.github.com/) extensions to git are used. Please ensure that **`git-lfs`** is first installed on your system.
+2. Download Nanopore tutorial & example files into folder named `Pinfish`. This tutorial requires the **`git-lfs`** large file support capabilities; this should be installed first through **`Conda`**
 ```
-    git clone --recursive https://github.com/nanoporetech/bioinformatics-tutorials.git NanoporeTutorials
+    conda install -c conda-forge git-lfs
+    git lfs install
+    git clone https://github.com/nanoporetech/ont_tutorial_pinfish.git Pinfish
 ```
 3. Change into the created `pinfish` sub-directory of the NanoporeTutorials
 ```
-    cd NanoporeTutorials/Pinfish
+    cd Pinfish
 ```
 4. Install conda software dependencies with
 ```
-    conda env create --name pinfish --file environment.yaml
+    conda env create --name Pinfish --file environment.yaml
 ```
 5. Initialise conda environment with 
 ```
-    source activate pinfish
+    source activate Pinfish
 ```
-6. Install **`pychopper`** software
-```
-    pip install git+https://github.com/nanoporetech/pychopper.git
-```
-7. Install **`Racon`** software, and add to the path. Although **`Racon`** is installed using **`Bioconda`**, the Conda provided version may utilise SIMD instructions that are unavailable to the processor on the computer system being used. Installation from source is strongly advised.
-```
-   git clone --recursive https://github.com/isovic/racon.git racon
-   mkdir racon/build && cd racon/build
-   cmake -DCMAKE_BUILD_TYPE=Release .. && make
-   cd ../..
-   export PATH=./racon/build/bin:$PATH
-```
-8. Install the **`pinfish`** software
-```
-   git clone https://github.com/nanoporetech/pinfish.git
-```
+
 
 #### Compilation From Source
 
@@ -89,28 +75,16 @@ This tutorial requires **`Racon`** and **`Pinfish`** - instructions for their in
 
 In your Conda environment, and in the tutorial working directory,
 
-1. Download the reference genome (and unzip it)
+1. *optional* edit the provided **`config.yaml`** file to match your own study design
+2. Run the Snakefile workflow (the command assumes 4 available threads; adjust to match your computer's capabilities)
 ```
-    wget --directory-prefix ReferenceData ftp://ftp.ensembl.org/pub/release-94/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
-    gunzip -d ReferenceData/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
-    wget --directory-prefix ReferenceData ftp://ftp.ensembl.org/pub/release-94/gff3/homo_sapiens/Homo_sapiens.GRCh38.94.chromosome.20.gff3.gz
-    gunzip -d ReferenceData/Homo_sapiens.GRCh38.94.chromosome.20.gff3.gz
+    snakemake -j 4 all
 ```
-2. Select full length transcripts and standardise read orientation
-```
-    mkdir -p Analysis/PyChopper
-    cdna_classifier.py -b ReferenceData/cdna_barcodes.fas -r Analysis/PyChopper/NA12878-cDNA-1D.chr20.filt.pychopper.pdf ./RawData/NA12878-cDNA-1D.chr20.filt.fastq ./RawData/NA12878-cDNA-1D.chr20.filt.pychopper.fastq
-```
-3. *optional* edit the provided **`config.yaml`** file to match your own study design
-4. Run the Snakefile workflow (the command assumes 8 available threads; adjust to match your computer's capabilities)
-```
-    snakemake -j 8 all
-```
-5. Use the **`gffcompare`** tool to compare the annotated gene features to the previously downloaded **`gff`** file
+3. Use the **`gffcompare`** tool to compare the annotated gene features to the previously downloaded **`gff`** file
 ```
 gffcompare -r ReferenceData/Homo_sapiens.GRCh38.94.chromosome.20.gff3 -R -M Analysis/pinfish/polished_transcripts_collapsed.gff
 ```
-6. Render the report using results from the analysis above
+4. . Render the report using results from the analysis above
 ```
     R --slave -e 'rmarkdown::render("Nanopore_Pinfish_Tutorial.Rmd", "html_document")'
 ```
@@ -130,7 +104,7 @@ The report can be prepared by "knit" from the GUI as shown in the figure
 
 # 3. Results
 
-This tutorial workflow will produce a rich description of your sequence library characteristics and the results from the differential expression analysis. Please visit the tutorial page at [https://community.nanoporetech.com/knowledge/bioinformatics]( https://community.nanoporetech.com/knowledge/bioinformatics) for more information
+This tutorial workflow will produce a rich description of your sequence library characteristics and the results from the Pinfish isoform analysis. Please visit the tutorial page at [https://community.nanoporetech.com/knowledge/bioinformatics]( https://community.nanoporetech.com/knowledge/bioinformatics) for more information
 
 ******************
 
@@ -138,9 +112,9 @@ This tutorial workflow will produce a rich description of your sequence library 
 
 ### Licence and Copyright:
 
-© 2018 Oxford Nanopore Technologies Ltd.
+© 2019 Oxford Nanopore Technologies Ltd.
 
-Bioinformatics-Tutorials is distributed by Oxford Nanopore Technologies under the terms of the MPL-2.0 license.
+ont_tutorial_pinfish and other Nanopore tutorials are distributed by Oxford Nanopore Technologies under the terms of the MPL-2.0 license.
 
 ### FAQs:
 
