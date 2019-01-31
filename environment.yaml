@@ -4,6 +4,8 @@ channels:
   - r
   - sagrudd
 dependencies:
+  - git
+  - git-lfs
   - snakemake-minimal =5.2.4
   - python =3.6
   - samtools
@@ -15,7 +17,9 @@ dependencies:
   - openjdk
   - gffcompare
   - gffread
-  - igv
+  - igv =2.4.9  # version 2.4.16 places igv.jar into wrong directory
+  - xorg-libxext
+  - xorg-libxtst
   - racon
   - r-pdftools
   - parasail-python

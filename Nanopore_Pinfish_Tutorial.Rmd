@@ -37,8 +37,13 @@ library(pdftools)
 config <- yaml.load_file("config.yaml")
 tutorialText   <- config$tutorialText
 
-rawData <- config$raw_fastq
-pycData <- config$reads_fastq
+##
+# the readFastq method from ShortRead does not handle bzip files very well - let´s use the 
+# uncompressed file that has been already been unpacked within the required Snakefile
+rawData <- file.path(getwd(), "RawData", gsub("(\\.gz$)|(\\.bz2$)", "",config$raw_fastq))
+
+pycData <- file.path(getwd(), "Analysis", "Pychopper", 
+                     paste(gsub("(\\.gz$)|(\\.bz2$)", "", config$raw_fastq), "pychop.fastq", sep="."))
 
 slurpContent <- function(filename) {
   include = as.logical(tutorialText)
@@ -54,6 +59,10 @@ slurpContent <- function(filename) {
 # Results from **`Pinfish`** analysis Tutorial
 
 ## Review of starting sequence collections
+
+# Raw sequence review
+
+It is worth considering some of the sequence characteristics for each of the sequence libraries that has been prepared and included within the differential expression analysis. The statistics shown in the table below \ref{tab:summaryStatsTable} have been produced using the R **`ShortRead`** package (see @R-ShortRead). Loading the provided Fastq format sequence files into computer memory has allowed for the calculation of sequence length distribution, a review of sequence qualities, and the preparation of some minimal statistics that allow for the qualitative and quantitative review of these different sequence libraries. 
 
 
 ```{r startingData, echo=FALSE}
@@ -90,28 +99,30 @@ processQCFastq <- function(file) {
 
 data <- lapply(c(rawData, pycData), processQCFastq)
 qcData <- data.frame(data)
-colnames(qcData) <- c("RawData", "PyChopperData")
+colnames(qcData) <- c("RawData", "Pychopper")
 
 ```
 
-
-
-
-```{r summaryStatsTable, echo=FALSE, cache=TRUE, resize.width=100}
+```{r summaryStatsTable, echo=FALSE, cache=FALSE, resize.width=100}
 knitr::kable(qcData, caption="Summary statistics for the cDNA data processed before and after PyChopper filtering", booktabs=TRUE, table.envir='table*', linesep="")  %>%
-  kable_styling(latex_options=c("hold_position", font_size=9)) %>%
-  add_footnote(c(".")) # footnote required for corrected Tufte LaTeX rendering
+  kable_styling(latex_options=c("hold_position", font_size=9)) 
 ```
+
+The summary statistics displayed in the table above include observational metrics including the number of reads, information on the longest, shortest and mean sequence read lengths and other information that includes GC content, N50 and N90 read lengths. The first result column describes the sequence characteristics of the raw sequence collection; the second column describes the sequences following the **`Pychopper`** analysis.
+
+**`Pychopper`** selects for sequence reads that contain the appropriate adapter sequences at each end of the sequence read and will orientate the sequences into the correct or stranded orientation. 
+
+Running **`Pychopper`** on your sequence collection will reduce the total number of reads but will qualitatively increase the utility of the library for isoform discovery. The table above should be reviewed to see how the starting sequence library has been transformed. If too many reads have been removed this could be an indication of problems during library preparation and you would be recommended to discuss your library preparations with a member of our Technical team.
+
 
 
 The **`PyChopper`** method used to select for the subset of likely full-length sequence transcripts writes its output to a **`PDF`** file. They key figures from the PDF file are included here.
 
 ```{r, results="hide", echo=FALSE}
-pychopperPage1 <- pdf_convert("Analysis/PyChopper/NA12878-cDNA-1D.chr20.filt.pychopper.pdf", pages=1)
-pychopperPage2 <- pdf_convert("Analysis/PyChopper/NA12878-cDNA-1D.chr20.filt.pychopper.pdf", pages=2)
-pychopperPage3 <- pdf_convert("Analysis/PyChopper/NA12878-cDNA-1D.chr20.filt.pychopper.pdf", pages=3)
+pychopperPage1 <- pdf_convert("Analysis/Pychopper/Pychopper_report.pdf", pages=1)
+pychopperPage2 <- pdf_convert("Analysis/Pychopper/Pychopper_report.pdf", pages=2)
+pychopperPage3 <- pdf_convert("Analysis/Pychopper/Pychopper_report.pdf", pages=3)
 ```
-
 
 ```{r, echo=FALSE, fig.fullwidth=FALSE, message=FALSE}
 knitr::include_graphics(pychopperPage1)
@@ -126,7 +137,7 @@ knitr::include_graphics(pychopperPage3)
 ```
 
 
-```{r lengthdistribution, include=TRUE, cache=FALSE, fig.fullwidth=FALSE, echo=FALSE}
+```{r lengthdistribution, include=TRUE, cache=FALSE, echo=FALSE}
 
 # https://stackoverflow.com/questions/6461209/how-to-round-up-to-the-nearest-10-or-100-or-x
 roundUpNice <- function(x, nice=seq(from=1, to=10, by=0.25)) {
@@ -168,16 +179,56 @@ ggplot(lengthDistMelt, aes(x=length, fill=variable, y=value)) +
 
 # GFFCompare
 
-The [GFFcompare](https://github.com/gpertea/gffcompare) methods provide a collection of tools that can be used to look for overlap and novel features within and between genome annotation **`GFF`** files.
+The [GFFcompare](https://github.com/gpertea/gffcompare) methods provide a collection of tools that can be used to look for overlapping and novel features within and between genome annotation **`GFF`** files. **`GFFcompare`**  has been run during the **`snakemake`** process. The method was run using the specified GFF genome annotation provided in the config file (``` `r  gsub("(\\.gz$)|(\\.bz2$)", "", gsub(".+/","", config$genome_annot))` ```) and with the following configuration parameters 
 
-```
-gffcompare -r ReferenceData/Homo_sapiens.GRCh38.94.chromosome.20.gff3 -R -M Analysis/pinfish/polished_transcripts_collapsed.gff
-```
+
+* **`-r`**  specifies reference genome
+* **`-R`**  causes gffcompare to ignore reference transcripts that are not overlapped by any transcript in input GFF
+* **`-M`**  discard (ignore) single-exon transfrags and reference transcripts
+* **`-C`**  Discard the “contained” transfrags from the .combined.gtf output. By default, without this option, gffcompare writes in that file isoforms that were found to be fully contained/covered (with the same compatible intron structure)
+* **`-K`**  do NOT discard any redundant transfrag matching a reference
 
 
 ```{r, echo=FALSE, comment=""}
-cat(paste(readLines("gffcmp.stats"),collapse="\n"))
+cat(paste(readLines("Analysis/GFFcompare/nanopore.stats"),collapse="\n"))
 ```
+
+
+
+Sensitivity = TP / (TP+FN)
+Precision = TP / (TP+FP)
+
+
+.tracking
+    1. Query transfrag id
+    2. Query locus id
+    3. Reference gene id
+    4. Reference transcript id
+    5. class code
+        = complete and exact match of intron chain
+        u unknown / intergenic
+        c contained in reference (missing exons)
+        s intron match but opposite strand (mapping challenge // has pychopper been applied?)
+        j multi-exon with junction matches
+        o same strand overlap with reference exons
+        x exonic overlap but on opposite strand
+    6. qJ:<gene_id>|<transcript_id>|<num_exons>|<FPKM>|<TPM>|<cov>|<len>
+
+
+
+
+![](http://ccb.jhu.edu/software/stringtie/gffcompare_codes.png)
+
+
+
+
+
+# IGV
+
+igv -g ./ReferenceData/Homo_sapiens.GRCh38.dna.primary_assembly.fa  ./Analysis/Minimap2/NA12878-cDNA-1D.chr20.filt.pychopper.bam,./Analysis/Minimap2/polished_reads_aln_sorted.bam,./ReferenceData/Homo_sapiens.GRCh38.94.chromosome.20.gff3,./Analysis/Pinfish/polished_transcripts_collapsed.gff 20:3209488-3223858
+
+
+# an apparently novel gene from the unfiltered dataset ...
 
 
 

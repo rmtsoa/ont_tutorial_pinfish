@@ -2,16 +2,13 @@
 ## General pipeline parameters:
 tutorialText: TRUE
 
-# path for ReferenceData, RawData
-ReferenceData: "ReferenceData"
-RawData: "RawData"
-
 ## Pipeline-specific parameters
-threads: 12
+threads: 50
 pychopper: TRUE
 
 # Input genome:
-genome_fasta: "ftp://ftp.ensembl.org/pub/release-94/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"
+genome_fasta: "http://ftp.ensembl.org/pub/release-94/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"
+genome_annot: "http://ftp.ensembl.org/pub/release-94/gff3/homo_sapiens/Homo_sapiens.GRCh38.94.chromosome.20.gff3.gz"
 # genome_fasta could either be (1) a URL to a genome assembly e.g. at enseml / ncbi
 #                              (2) a filename corresponding to file that has been placed in the $ReferenceData folder
 

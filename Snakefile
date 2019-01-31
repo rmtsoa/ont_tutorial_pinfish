@@ -8,27 +8,57 @@ HTTP = HTTPRemoteProvider()
 
 configfile: "config.yaml"
 
+# assess the genome annotations ...
 ProvidedGenomeFastaLink = config["genome_fasta"]
+ProvidedAnnotationLink  = config["genome_annot"]
 ReferenceData = config["ReferenceData"]
 RawData = config["RawData"]
 
-# deprecated #SNAKEDIR = os.path.dirname(workflow.snakefile)
+# is fasta link is on filesystem; if URL then download - look for leading https / http / ftp ...
 
+downloadSource = []
+downloadDest   = []
 
-# Validate that the fasta link is on filesystem; if URL then download
-# parse on leading https / http / ftp ...
-webLink = ""
-if (re.search("ftp://", ProvidedGenomeFastaLink) or re.search("http://", ProvidedGenomeFastaLink) or re.search("https://", ProvidedGenomeFastaLink)):
-  webLink = re.sub("^[^:]+://", "", ProvidedGenomeFastaLink)
-  ProvidedGenomeFasta = os.path.join(ReferenceData, os.path.basename(webLink)) 
-else:
-  ProvidedGenomeFasta = os.path.join(ReferenceData, ProvidedGenomeFastaLink)
-  webLink = "dummy.domain.com/"+ProvidedGenomeFasta
+def checkExternalLinks(xlink):
+  print("externalLinks")
+  yfile = os.path.join(ReferenceData, xlink)
+  ylink = "dummy.domain.com/"+yfile  # pseudoUrl from providedfile
+  p = re.compile("(^http:|^ftp:|^https:)")
+  if (p.search(xlink)):
+    yfile = os.path.join(ReferenceData, os.path.basename(xlink))
+    ylink = re.sub("^[^:]+://", "", xlink)
+    downloadSource.append(HTTP.remote(ylink, keep_local=True))
+    downloadDest.append(yfile)
+  return ylink, yfile
+
+webLink, GenomeFasta = checkExternalLinks(ProvidedGenomeFastaLink)
+annoLink, GenomeGFF = checkExternalLinks(ProvidedAnnotationLink)
+
+print(webLink)
+print(GenomeFasta)
+print(annoLink)
+print(GenomeGFF)
+print(downloadSource)
+print(downloadDest)
+
+def handleExternalZip(xfile):
+  yfile = re.sub("\.gz$","",xfile)
+  if (yfile == xfile):
+    xfile = os.path.join(os.path.dirname(workflow.snakefile), "Snakefile")
+  return xfile, yfile
+
+GenomeFasta, UnpackedReferenceFasta = handleExternalZip(GenomeFasta)
+GenomeGFF, UnpackedGenomeGFF = handleExternalZip(GenomeGFF)
+
+print(GenomeFasta)
+print(UnpackedReferenceFasta)
+print(GenomeGFF)
+print(UnpackedGenomeGFF)
 
 # some methods require a gunzipped fasta file ... 
-UnpackedReferenceFasta = re.sub("\.gz$","",ProvidedGenomeFasta)
+UnpackedReferenceFasta = re.sub("\.gz$","",GenomeFasta)
 
-if (UnpackedReferenceFasta == ProvidedGenomeFasta):
+if (UnpackedReferenceFasta == GenomeFasta):
   # workflow has been called with an uncompressed starting fasta file ...
   # This means that cannot unpack ... - and there is a circular dependency ...
   ProvidedGenomeFasta = os.path.join(os.path.dirname(workflow.snakefile), "Snakefile")
@@ -50,21 +80,17 @@ elif (re.search("\.bz2$", RawFastq)):
 PychopperPDF = os.path.join("Analysis/Pychopper", "pychopper.pdf") 
 PychopperFastq = os.path.join("Analysis/Pychopper", re.sub(os.path.splitext(UnpackedRawFastq)[1],"",os.path.basename(UnpackedRawFastq))+".pychopper.fastq") 
 
-
-print(PychopperPDF)
-print(PychopperFastq)
-
 Minimap2BAM = os.path.join("Analysis/Minimap2", re.sub(os.path.splitext(PychopperFastq)[1],"",os.path.basename(PychopperFastq))+".bam")
 
-PinfishRawTranscripts = os.path.join("Analysis/Pinfish" , "raw_transcripts.gff")
-PinfishClusteredTranscripts = os.path.join("Analysis/Pinfish" ,"clustered_transcripts.gff")
-PinfishClusterMemberships = os.path.join("Analysis/Pinfish" ,"cluster_memberships.tsv")
+PinfishRawTranscripts                = os.path.join("Analysis/Pinfish" , "raw_transcripts.gff")
+PinfishClusteredTranscripts          = os.path.join("Analysis/Pinfish" ,"clustered_transcripts.gff")
+PinfishClusterMemberships            = os.path.join("Analysis/Pinfish" ,"cluster_memberships.tsv")
 PinfishClusteredCollapsedTranscripts = os.path.join("Analysis/Pinfish" ,"clustered_transcripts_collapsed.gff")
-PinfishPolishedTranscriptFasta = os.path.join("Analysis/Pinfish" ,"polished_transcripts.fas")
-MinimapPolishedBam = os.path.join("Analysis/Minimap2", "polished_reads_aln_sorted.bam")
-PinfishPolishedTranscripts = os.path.join("Analysis/Pinfish" ,"polished_transcripts.gff")
-PinfishPolishedCollapsedTranscripts = os.path.join("Analysis/Pinfish" ,"polished_transcripts_collapsed.gff")
-PinfishCorrectedTranscriptome = os.path.join("Analysis/Pinfish" ,"corrected_transcriptome_polished_collapsed.fas")
+PinfishPolishedTranscriptFasta       = os.path.join("Analysis/Pinfish" ,"polished_transcripts.fas")
+MinimapPolishedBam                   = os.path.join("Analysis/Minimap2", "polished_reads_aln_sorted.bam")
+PinfishPolishedTranscripts           = os.path.join("Analysis/Pinfish" ,"polished_transcripts.gff")
+PinfishPolishedCollapsedTranscripts  = os.path.join("Analysis/Pinfish" ,"polished_transcripts_collapsed.gff")
+PinfishCorrectedTranscriptome        = os.path.join("Analysis/Pinfish" ,"corrected_transcriptome_polished_collapsed.fas")
 
 rule all:
   input:
@@ -73,19 +99,29 @@ rule all:
     
 
 # download the reference genome sequence
-rule DownloadReferenceGenome:
+#rule DownloadReferenceGenome:
+#  input:
+#    ancient(HTTP.remote(webLink, keep_local=True))
+#  output:
+#    ancient(GenomeFasta)
+#  run:
+#    shell("mv {input} {output}")
+#  
+
+
+rule DownloadRemoteFile:
   input:
-    ancient(HTTP.remote(webLink, keep_local=True))
+    downloadSource
   output:
-    ancient(ProvidedGenomeFasta)
+    downloadDest
   run:
     shell("mv {input} {output}")
-  
+
 
 # gunzip the provided genome reference if it is gzipped ...
 rule UnpackReferenceGenome:
   input:
-    ancient(ProvidedGenomeFasta)
+    ancient(GenomeFasta)
   output:
     ancient(UnpackedReferenceFasta)
   shell:
