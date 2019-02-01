@@ -33,6 +33,7 @@ library(yaml)
 library(ShortRead)   # oh the irony!
 library(kableExtra) 
 library(pdftools)
+library(data.table)
 
 config <- yaml.load_file("config.yaml")
 tutorialText   <- config$tutorialText
@@ -56,11 +57,7 @@ slurpContent <- function(filename) {
 
 `r slurpContent("Static/TutorialPreamble.md")`
 
-# Results from **`Pinfish`** analysis Tutorial
-
-## Review of starting sequence collections
-
-# Raw sequence review
+# Review of starting sequence collections
 
 It is worth considering some of the sequence characteristics for each of the sequence libraries that has been prepared and included within the differential expression analysis. The statistics shown in the table below \ref{tab:summaryStatsTable} have been produced using the R **`ShortRead`** package (see @R-ShortRead). Loading the provided Fastq format sequence files into computer memory has allowed for the calculation of sequence length distribution, a review of sequence qualities, and the preparation of some minimal statistics that allow for the qualitative and quantitative review of these different sequence libraries. 
 
@@ -112,29 +109,33 @@ The summary statistics displayed in the table above include observational metric
 
 **`Pychopper`** selects for sequence reads that contain the appropriate adapter sequences at each end of the sequence read and will orientate the sequences into the correct or stranded orientation. 
 
-Running **`Pychopper`** on your sequence collection will reduce the total number of reads but will qualitatively increase the utility of the library for isoform discovery. The table above should be reviewed to see how the starting sequence library has been transformed. If too many reads have been removed this could be an indication of problems during library preparation and you would be recommended to discuss your library preparations with a member of our Technical team.
+Running **`Pychopper`** on your sequence collection will reduce the total number of reads but will qualitatively increase the utility of the library for isoform discovery. The table above should be reviewed to see how the starting sequence library has been transformed.
 
+The **`Pychopper`** method used to select for the subset of likely full-length sequence transcripts prepares a collection of sequences in Fastq format that are provided to the next step in the analysis. The key summary statistics from the **`Pychopper`** are presented here.
 
+```{r, echo=FALSE}
 
-The **`PyChopper`** method used to select for the subset of likely full-length sequence transcripts writes its output to a **`PDF`** file. They key figures from the PDF file are included here.
+# NA12878-cDNA-1D.chr20.filt.fastq.pychop.stats
+pycStats <- file.path(getwd(), "Analysis", "Pychopper", 
+                     paste(gsub("(\\.gz$)|(\\.bz2$)", "", config$raw_fastq), "pychop.stats", sep="."))
+pycStats <- data.table::fread(pycStats)
+mstats <- melt(as.matrix(c(classified=as.numeric(pycStats[1,"+"] + pycStats[1,"-"]),
+                           unclassified=as.numeric(pycStats[1,"unclassified"]))))
 
-```{r, results="hide", echo=FALSE}
-pychopperPage1 <- pdf_convert("Analysis/Pychopper/Pychopper_report.pdf", pages=1)
-pychopperPage2 <- pdf_convert("Analysis/Pychopper/Pychopper_report.pdf", pages=2)
-pychopperPage3 <- pdf_convert("Analysis/Pychopper/Pychopper_report.pdf", pages=3)
+ggplot(mstats, aes(Var1, value)) + geom_histogram(stat="identity", fill="steelblue") + labs(title="histogram showing Pychopper cDNA read classification") + xlab("Pychopper full length classification") + ylab("Count (reads)")
+
 ```
 
-```{r, echo=FALSE, fig.fullwidth=FALSE, message=FALSE}
-knitr::include_graphics(pychopperPage1)
+The figure above shows a the distribution of reads that have been called as either full length (classified) or not being full length (unclassified). If too many reads have been removed this could be an indication of problems during library preparation and you would be recommended to discuss your library preparations with a member of our Technical team.
+
+
+```{r, echo=FALSE}
+#knitr::include_graphics(pychopperPage1)
+ggplot(melt(as.matrix(pycStats[,c(1,2)])), aes(Var2, value)) + geom_histogram(stat="identity", fill="steelblue") + labs(title="histogram showing distribution of Pychopper cDNA orientation") + xlab("Pychopper called sequence strand") + ylab("Count (reads)")
 ```
 
-```{r, echo=FALSE, fig.fullwidth=FALSE, message=FALSE}
-knitr::include_graphics(pychopperPage2)
-```
 
-```{r, echo=FALSE, fig.fullwidth=FALSE, message=FALSE}
-knitr::include_graphics(pychopperPage3)
-```
+The figure above shows the distribution of Pychopper classifications for sequence reads oriented in the (+) or (-) direction.
 
 
 ```{r lengthdistribution, include=TRUE, cache=FALSE, echo=FALSE}
@@ -177,58 +178,116 @@ ggplot(lengthDistMelt, aes(x=length, fill=variable, y=value)) +
 ```
 
 
-# GFFCompare
+# GffCompare
 
-The [GFFcompare](https://github.com/gpertea/gffcompare) methods provide a collection of tools that can be used to look for overlapping and novel features within and between genome annotation **`GFF`** files. **`GFFcompare`**  has been run during the **`snakemake`** process. The method was run using the specified GFF genome annotation provided in the config file (``` `r  gsub("(\\.gz$)|(\\.bz2$)", "", gsub(".+/","", config$genome_annot))` ```) and with the following configuration parameters 
+The [GffCompare](https://github.com/gpertea/GffCompare) methods provide a collection of tools that can be used to look for overlapping and novel features within and between genome annotation **`GFF`** files. The cluster and polished transcript annotations from **`Pinfish`** are compared to the reference genome annotation. Each provided transcript is reviewed to see if it novel (absent from the reference database), identical to a known transcript or similar to a known transcript..
 
+**`GffCompare`** is run during the **`snakemake`** process. The method is run using the specified GFF genome annotation provided in the config file (``` `r  gsub("(\\.gz$)|(\\.bz2$)", "", gsub(".+/","", config$genome_annot))` ```) and with the following configuration parameters 
 
 * **`-r`**  specifies reference genome
-* **`-R`**  causes gffcompare to ignore reference transcripts that are not overlapped by any transcript in input GFF
+* **`-R`**  causes GffCompare to ignore reference transcripts that are not overlapped by any transcript in input GFF
 * **`-M`**  discard (ignore) single-exon transfrags and reference transcripts
-* **`-C`**  Discard the “contained” transfrags from the .combined.gtf output. By default, without this option, gffcompare writes in that file isoforms that were found to be fully contained/covered (with the same compatible intron structure)
+* **`-C`**  Discard the “contained” transfrags from the .combined.gtf output. By default, without this option, GffCompare writes in that file isoforms that were found to be fully contained/covered (with the same compatible intron structure)
 * **`-K`**  do NOT discard any redundant transfrag matching a reference
 
 
 ```{r, echo=FALSE, comment=""}
-cat(paste(readLines("Analysis/GFFcompare/nanopore.stats"),collapse="\n"))
+cat(paste(readLines("Analysis/GffCompare/nanopore.stats"),collapse="\n"))
 ```
 
+The output above is from the GffCompare summary statistics. This describes the number of transcripts that were identified within the **`Pinfish`** analysis that are non-redundant and are overlapping with the provided reference annotation. Sensitivity and precision of annotation are compared with the reference. This output also provides information on the novelty of transcribed features.
 
+Sensitivity = $TP/(TP+FN)$
 
-Sensitivity = TP / (TP+FN)
-Precision = TP / (TP+FP)
+Precision = $TP/(TP+FP)$
 
+The analysis here is only considering the reference genes that are partially or completely covered by **`Pinfish`** transcripts. The sensitivity will be determined by the number of starting cDNA sequence reads and the diversity of gene expression that was represented within the biological samples that were used to prepare the cDNA.
 
-.tracking
-    1. Query transfrag id
-    2. Query locus id
-    3. Reference gene id
-    4. Reference transcript id
-    5. class code
-        = complete and exact match of intron chain
-        u unknown / intergenic
-        c contained in reference (missing exons)
-        s intron match but opposite strand (mapping challenge // has pychopper been applied?)
-        j multi-exon with junction matches
-        o same strand overlap with reference exons
-        x exonic overlap but on opposite strand
-    6. qJ:<gene_id>|<transcript_id>|<num_exons>|<FPKM>|<TPM>|<cov>|<len>
-
-
-
+The **`GffCompare`** software classifies transcripts within its output files into classes that include ("=", "u", "c") and others. These define how a transcript can be best described relative to the provided reference annotation.
 
 ![](http://ccb.jhu.edu/software/stringtie/gffcompare_codes.png)
 
+The figure above is from the **`GffCompare`** software webpages at John Hopkins University. This figure describes the different codes and provides cartoons illustrating the differences with canonical genes.
+
+Summary statistics for the isoforms contrasted to the reference annotation are provided in the **`GffCompare/nanopore.tracking`** results file. These **`GffCompare`** codes can be plotted as a histogram.
+
+```{r, echo=FALSE}
+
+tracking <- data.table::fread("Analysis/GffCompare/nanopore.tracking", stringsAsFactors=FALSE, sep="\t", header=FALSE)
+ggplot(tracking, aes(V4)) + geom_histogram(stat="count", fill="steelblue") + labs(title="histogram showing GffCompare classes for annotated transcripts") + xlab("GffCompare class")
+
+```
+
+The histogram in the figure above shows the distribution of **`GffCompare`** annotated transcripts. There are **`r length(which(tracking$V4 == "="))`**  transcripts assigned code **`=`** or corresponding to an exact match with an annotated gene. **`r length(which(tracking$V4 == "u"))`** transcripts are undefined in the provided genome annotation GFF file. These transcripts could represent novel genes. The other codes together account for **`r round((nrow(tracking) - length(which(tracking$V4 == "=" | tracking$V4 == "u"))) / nrow(tracking) * 100, digits=1)`** **%** of the sequence reads and represent potentially novel isoforms with a variety of missing exons, retained introns and more complex multi-exon events. 
+
+GffCompare finally collapses transcribed-fragments (transfrags) into full(er) length transcripts sharing the same patterns of intron boundaries to produce a non-redundant set of transcripts. 
+
+```{r, comment=NA, echo=FALSE}
+# select for the tracking data that corresponds to transcripts of a given class (u in this case)
+usegffclass = "j"
+
+printGFFclass <- function(usegffclass) {
+  gffclasssel <- t(data.frame(strsplit(gsub("^[^:]+:","",unlist(tracking[which(tracking$V4 == usegffclass),5])),"\\|")))
+  
+  gff <- data.table::fread("Analysis/GffCompare/nanopore.combined.gtf")
+  gffTranscripts <- which(gff$V3=="transcript")
+  gffTranscripts <- as.data.frame(cbind(gffTranscripts,gsub("\\|.+","",gsub(".+oId \"","",unlist(gff[gffTranscripts,9])))), stringsAsFactors=FALSE)
+  gffTranscripts[,1] <- as.numeric(gffTranscripts[,1])
+  
+  gffCoords <- gff[gffTranscripts[match(gffclasssel[,2],  gffTranscripts[,2]),1],]
+  gffCoords$interval <- gffCoords[,5] - gffCoords[,4]
+  gtype <- gff$V3
+  
+  #check exon count ...
+  # (diff(sort(append(which(gtype=="transcript"), length(gtype)+1), decreasing=FALSE))-1)[gffTranscripts[match(gffclasssel[,2],  gffTranscripts[,2]),1]]
+  gffCoords$exoncount <- gffclasssel[,4]
+  # concordant in test sets
+  
+  gffCoords <- data.frame(gffCoords)[,c(1,2,3,4,5,7,10,11)]
+  colnames(gffCoords) <- c("Chr", "Pipeline", "Feature", "Start", "Stop", "Strand", "Interval", "Exons")
+  
+  # we can have NA values in this table since the tracking data is based on a redundant dataset and the gff is nonred
+  if (length(which(is.na(gffCoords[,1])))>0) { gffCoords <- gffCoords[-which(is.na(gffCoords[,1])),] }
+  
+  kable(gffCoords, format="pandoc", caption=paste("Table summarising transcripts identified by the Pinfish that correspond to GffCompare class \"",usegffclass,"\"",sep=""))
+
+}
+
+printGFFclass("u")
+```
+
+The table above shows the transcripts that were identified as potential novel transcripts. Since the classification of novelty is based on the provided annotation we recommend that Chromosome numbers and coordinates are checked.
 
 
+```{r, echo=FALSE}
+printGFFclass("j")
+```
+
+The table above shows the transcripts that have been assigned to the class "multi-exon with at least one junction match". This classification could include a variety of novel isoforms - these can be checked using a genome browser.
 
 
 # IGV
 
-igv -g ./ReferenceData/Homo_sapiens.GRCh38.dna.primary_assembly.fa  ./Analysis/Minimap2/NA12878-cDNA-1D.chr20.filt.pychopper.bam,./Analysis/Minimap2/polished_reads_aln_sorted.bam,./ReferenceData/Homo_sapiens.GRCh38.94.chromosome.20.gff3,./Analysis/Pinfish/polished_transcripts_collapsed.gff 20:3209488-3223858
+The Integrative Genomics Viewer (**`IGV`**) is a visualisation tool for genomics data that has been installed by **`Conda`**. The software provides functionality for the display of sequence mapping data from BAM files that can subsequently be overlaid with "tracks" of information that can include depth-of-coverage for mapping data and gene annotations. 
 
+**`IGV`** can be started from the command line by using the command `igv`.
 
-# an apparently novel gene from the unfiltered dataset ...
+In this tutorial we recommend that you instead encourage **`IGV`** to display sequence information around a gene of interest. In the last table a collection of potentially novel transcripts was displayed. We would like to explore the transcript information around this gene. The command below will open the **`IGV`** browser to the appropriate genome coordinates - in this example we are using the feature with coordinates `[Chr 20] Start=34089431, Stop=34112220`.
+
+```
+igv -g ./ReferenceData/Homo_sapiens.GRCh38.dna.primary_assembly.fa \
+./Analysis/Minimap2/NA12878-cDNA-1D.chr20.filt.fastq.bam,\
+./Analysis/Minimap2/polished_reads_aln_sorted.bam,\
+./ReferenceData/Homo_sapiens.GRCh38.94.chromosome.20.gff3,\
+./Analysis/Pinfish/polished_transcripts_collapsed.gff \
+20:34089431-34112220
+```
+
+![](Static/Images/igv.png)
+
+The figure above shows a screenshot from the **`IGV`** genome browser. At the bottom, shaded in red, is a gene track for a transcript identified by **`Pinfish`** and annotated by **`GffCompare`** as representing a variant isoform. The figure shows the location of where the **`Pychopper`** mapped sequence reads have been anchored to the reference genome (along with a summary of depth-of-coverage). The gene tracks from the reference human genome are shaded in blue. A comparison of the Pinfish/GffCompare transcript with the annotated human gene annotation suggests that the transcript is from gene EIF2S2 and that the final exon (the gene is on the reverse DNA strand) is truncated relative to the reference annotation. This is supported by the sequence mapping.
+
+We recommend that novel transcripts and transcripts with an apparently novel structure are reviewed within a genome browser.
 
 
 
@@ -236,15 +295,13 @@ igv -g ./ReferenceData/Homo_sapiens.GRCh38.dna.primary_assembly.fa  ./Analysis/M
 
 * __knit__ is the command to render an Rmarkdown file. The knitr package is used to embed code, the results of R analyses and their figures within the typeset text from the document. 
 
-* __L50__  the number of sequences (or contigs etc) that are longer than, or equal to, the N50 length and therefore include half the bases of the assembly
+* __L50__  describes the number of sequences (or contigs) that are longer than, or equal to, the N50 length and therefore include half the bases of the assembly
 
-* __N50__  length such that sequences (or contigs etc) of this length or longer include half the bases of the sequence collection
+* __N50__  describes the length (read length, contig length etc) where half the bases of the sequence collection are contained within reads/contigs of this length or longer
 
 * __Rmarkdown__ is an extension to markdown. Functional R code can be embedded in a plain-text document and subsequently rendered to other formats including the PDF format of this report.
 
-* __QV__  the quality value - -log10(p) that any given base is incorrect. QV may be either at the individual base level, or may be averaged across whole sequences
-
-* __sequencing_summary.txt__ a summary file describing sequence characteristics following base calling with the Guppy / Albacore software.
+* __QV__  the quality value, -log10(p) that any given base is incorrect. QV may be either at the individual base level, or may be averaged across whole sequences
 
 
 
@@ -262,7 +319,22 @@ utils:::print.sessionInfo(sessionInfo()[-7], locale=FALSE)
 \fontsize{10}{14}
 
 
+It is also worth recording the versions of the software that have been used for the analysis.
+
+\fontsize{8}{12}
+
+```{r, engine='bash', echo=FALSE, comment=NA}
+source ~/.bashrc
+source activate Pinfish
+conda list "samtools|minimap2|snakemake|rstudio|pinfish|pychopper|racon|gffread|gffcompare|igv|openjdk"
+```
+
 `r slurpContent("Static/TutorialPostamble.md")`
 
+
+\pagebreak
+
+
+# References and citations
 
 

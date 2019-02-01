@@ -11,169 +11,127 @@ configfile: "config.yaml"
 # assess the genome annotations ...
 ProvidedGenomeFastaLink = config["genome_fasta"]
 ProvidedAnnotationLink  = config["genome_annot"]
-ReferenceData = config["ReferenceData"]
-RawData = config["RawData"]
+
 
 # is fasta link is on filesystem; if URL then download - look for leading https / http / ftp ...
 
-downloadSource = []
-downloadDest   = []
+downloadSource = {}
+
+ReferenceData = "ReferenceData"
 
 def checkExternalLinks(xlink):
-  print("externalLinks")
-  yfile = os.path.join(ReferenceData, xlink)
-  ylink = "dummy.domain.com/"+yfile  # pseudoUrl from providedfile
+  yfile = xlink
   p = re.compile("(^http:|^ftp:|^https:)")
   if (p.search(xlink)):
-    yfile = os.path.join(ReferenceData, os.path.basename(xlink))
+    yfile = os.path.basename(xlink)
     ylink = re.sub("^[^:]+://", "", xlink)
-    downloadSource.append(HTTP.remote(ylink, keep_local=True))
-    downloadDest.append(yfile)
-  return ylink, yfile
+    downloadSource[yfile]=ylink
+  return yfile
 
-webLink, GenomeFasta = checkExternalLinks(ProvidedGenomeFastaLink)
-annoLink, GenomeGFF = checkExternalLinks(ProvidedAnnotationLink)
+GenomeFasta = checkExternalLinks(ProvidedGenomeFastaLink)
+GenomeGFF = checkExternalLinks(ProvidedAnnotationLink)
 
-print(webLink)
-print(GenomeFasta)
-print(annoLink)
-print(GenomeGFF)
-print(downloadSource)
-print(downloadDest)
-
+unzipDict = {}
 def handleExternalZip(xfile):
   yfile = re.sub("\.gz$","",xfile)
-  if (yfile == xfile):
-    xfile = os.path.join(os.path.dirname(workflow.snakefile), "Snakefile")
-  return xfile, yfile
+  if (yfile != xfile):
+    unzipDict[yfile]=xfile
+  return yfile
 
-GenomeFasta, UnpackedReferenceFasta = handleExternalZip(GenomeFasta)
-GenomeGFF, UnpackedGenomeGFF = handleExternalZip(GenomeGFF)
+UnpackedReferenceFasta = handleExternalZip(GenomeFasta)
+UnpackedGenomeGFF = handleExternalZip(GenomeGFF)
 
-print(GenomeFasta)
-print(UnpackedReferenceFasta)
-print(GenomeGFF)
-print(UnpackedGenomeGFF)
+### 
+# consider the unzip/bunzip required for e.g. the Pychopper analysis ...
+unzipInt = {}
+def handleInternalZip(xfile):
+  p = re.compile("(\.zip$|\.bz2$|\.gz$)")
+  yfile = p.sub("",xfile)
+  if (yfile != xfile):
+    unzipInt[yfile]=xfile
+  return yfile
+  
+RawFastq = config["raw_fastq"]
+UnpackedRawFastq = handleInternalZip(RawFastq)
 
-# some methods require a gunzipped fasta file ... 
-UnpackedReferenceFasta = re.sub("\.gz$","",GenomeFasta)
-
-if (UnpackedReferenceFasta == GenomeFasta):
-  # workflow has been called with an uncompressed starting fasta file ...
-  # This means that cannot unpack ... - and there is a circular dependency ...
-  ProvidedGenomeFasta = os.path.join(os.path.dirname(workflow.snakefile), "Snakefile")
-  # this is a nonsense entry; but the judicious usage of ancient means should not be called
-
-
-# Definition for the Minimap2 index
-ReferenceIndex = os.path.join("Analysis/Minimap2", os.path.basename(UnpackedReferenceFasta) + ".mmi")
-
-
-RawFastq = os.path.join(RawData, config["raw_fastq"])
-UnpackedRawFastq = RawFastq
-if (re.search("\.gz$",RawFastq)):
-  UnpackedRawFastq = re.sub("\.gz$", "", RawFastq)
-elif (re.search("\.bz2$", RawFastq)):
-  UnpackedRawFastq = re.sub("\.bz2$","",RawFastq)
-
-
-PychopperPDF = os.path.join("Analysis/Pychopper", "pychopper.pdf") 
-PychopperFastq = os.path.join("Analysis/Pychopper", re.sub(os.path.splitext(UnpackedRawFastq)[1],"",os.path.basename(UnpackedRawFastq))+".pychopper.fastq") 
-
-Minimap2BAM = os.path.join("Analysis/Minimap2", re.sub(os.path.splitext(PychopperFastq)[1],"",os.path.basename(PychopperFastq))+".bam")
-
-PinfishRawTranscripts                = os.path.join("Analysis/Pinfish" , "raw_transcripts.gff")
-PinfishClusteredTranscripts          = os.path.join("Analysis/Pinfish" ,"clustered_transcripts.gff")
-PinfishClusterMemberships            = os.path.join("Analysis/Pinfish" ,"cluster_memberships.tsv")
-PinfishClusteredCollapsedTranscripts = os.path.join("Analysis/Pinfish" ,"clustered_transcripts_collapsed.gff")
-PinfishPolishedTranscriptFasta       = os.path.join("Analysis/Pinfish" ,"polished_transcripts.fas")
-MinimapPolishedBam                   = os.path.join("Analysis/Minimap2", "polished_reads_aln_sorted.bam")
-PinfishPolishedTranscripts           = os.path.join("Analysis/Pinfish" ,"polished_transcripts.gff")
-PinfishPolishedCollapsedTranscripts  = os.path.join("Analysis/Pinfish" ,"polished_transcripts_collapsed.gff")
-PinfishCorrectedTranscriptome        = os.path.join("Analysis/Pinfish" ,"corrected_transcriptome_polished_collapsed.fas")
 
 rule all:
   input:
-    PinfishCorrectedTranscriptome,
-    PinfishClusteredCollapsedTranscripts
-    
-
-# download the reference genome sequence
-#rule DownloadReferenceGenome:
-#  input:
-#    ancient(HTTP.remote(webLink, keep_local=True))
-#  output:
-#    ancient(GenomeFasta)
-#  run:
-#    shell("mv {input} {output}")
-#  
+    "Analysis/Pinfish/corrected_transcriptome_polished_collapsed.fas",
+    "Analysis/Pinfish/clustered_transcripts_collapsed.gff",
+    "Analysis/GffCompare/nanopore.combined.gtf"
 
 
 rule DownloadRemoteFile:
-  input:
-    downloadSource
+  input: lambda wildcards: HTTP.remote(downloadSource[wildcards.downloadFile])
   output:
-    downloadDest
-  run:
-    shell("mv {input} {output}")
-
-
-# gunzip the provided genome reference if it is gzipped ...
-rule UnpackReferenceGenome:
-  input:
-    ancient(GenomeFasta)
-  output:
-    ancient(UnpackedReferenceFasta)
+    ancient("ReferenceData/{downloadFile}")
   shell:
-    "gunzip --keep -d {input}"
-    
-    
-# gunzip the provided rawSequence if it is gzipped or bzip2 compressed ...
-rule UnpackFastqData:
-  input:
-    RawFastq
+    'mv {input} {output}'
+
+
+rule UnpackPackedFile:
+  input: lambda wildcards: ("ReferenceData/"+unzipDict[wildcards.unzipFile])
   output:
-    ancient(UnpackedRawFastq)
-  run:
-    if (re.search("\.gz$", RawFastq)):
-      shell("gunzip --keep -d {input}")
-    elif (re.search("\.bz2$", RawFastq)):
-      shell("bunzip2 --keep -d {input}")
-
-
-# use pychopper to score for the full length sequence reads
-rule Pychopper:
-  input:
-    UnpackedRawFastq
-  output:
-    pdf = ancient(PychopperPDF),
-    fastq = ancient(PychopperFastq)
-  run:
-    shell("cdna_classifier.py -b ReferenceData/cdna_barcodes.fas -r {output.pdf} {input} {output.fastq}")
-
+    ancient("ReferenceData/{unzipFile}")
+  shell:
+    #"gunzip --keep -d {input}" --keep is obvious by missing from e.g. Centos 7
+    "gunzip -c {input} > {output}"
+    
 
 
 
 # build minimap2 index
 rule Minimap2Index: 
     input:
-        genome = UnpackedReferenceFasta
+        genome = "ReferenceData/"+UnpackedReferenceFasta
     output:
-        index = ReferenceIndex
+        index = "Analysis/Minimap2/"+UnpackedReferenceFasta+".mmi"
     params:
         opts = config["minimap_index_opts"]
     threads: config["threads"]
-    shell:"""
-        minimap2 -t {threads} {params.opts} -I 1000G -d {output.index} {input.genome}
-    """
+    shell:
+      "minimap2 -t {threads} {params.opts} -I 1000G -d {output.index} {input.genome}"
+    
+# not sure why but snakemake passes some unexpected values into this wildcard - if the value
+# is not in the starting dictionary then return an empty string
+def getzipfile(wildcards):
+  if (wildcards.unzipIntFile in list(unzipInt)):
+    return "RawData/"+unzipInt[wildcards.unzipIntFile]
+  return ""
 
 
+# gunzip the provided rawSequence if it is gzipped or bzip2 compressed ...
+rule UnpackFastqData:
+  input:
+    getzipfile
+  output:
+    ancient("RawData/{unzipIntFile}")
+  run:
+    if (re.search("\.gz$", RawFastq)):
+      shell("gunzip -c {input} > {output}")
+    elif (re.search("\.bz2$", RawFastq)):
+      shell("bunzip2 --keep -d {input}")
+      
+      
+rule Pychopper:
+  input:
+    "RawData/"+UnpackedRawFastq
+  output:
+    pdf = "Analysis/Pychopper/Pychopper_report.pdf",
+    fastq = "Analysis/Pychopper/"+UnpackedRawFastq+".pychop.fastq",
+    stats = "Analysis/Pychopper/"+UnpackedRawFastq+".pychop.stats",
+    scores = "Analysis/Pychopper/"+UnpackedRawFastq+".pychop.scores"
+  run:
+    shell("cdna_classifier.py -b ReferenceData/cdna_barcodes.fas -x -r {output.pdf} -S {output.stats} -A {output.scores} {input} {output.fastq}")
+    
+    
 rule Minimap2: ## map reads using minimap2
     input:
        index = rules.Minimap2Index.output.index,
-       fastq = PychopperFastq if (config["pychopper"]==True) else UnpackedRawFastq
+       fastq = rules.Pychopper.output.fastq if (config["pychopper"]==True) else "RawData/"+UnpackedRawFastq
     output:
-       bam = Minimap2BAM
+       bam = "Analysis/Minimap2/"+UnpackedRawFastq+".bam"
     params:
         opts = config["minimap2_opts"],
         min_mq = config["minimum_mapping_quality"],
@@ -184,25 +142,24 @@ rule Minimap2: ## map reads using minimap2
     samtools index {output.bam}
     """
 
-
 rule PinfishRawBAM2GFF: ## convert BAM to GFF
     input:
         bam = rules.Minimap2.output.bam
     output:
-        raw_gff = PinfishRawTranscripts
+        raw_gff = "Analysis/Pinfish/raw_transcripts.gff"
     params:
         opts = config["spliced_bam2gff_opts"]
     threads: config["threads"]
     shell:
         "spliced_bam2gff {params.opts} -t {threads} -M {input.bam} > {output.raw_gff}"
 
-
+    
 rule PinfishClusterGFF: ## cluster transcripts in GFF
     input:
         raw_gff = rules.PinfishRawBAM2GFF.output.raw_gff
     output:
-        cls_gff = PinfishClusteredTranscripts,
-        cls_tab = PinfishClusterMemberships,
+        cls_gff = "Analysis/Pinfish/clustered_transcripts.gff",
+        cls_tab = "Analysis/Pinfish/cluster_memberships.tsv",
     params:
         c = config["minimum_cluster_size"],
         d = config["exon_boundary_tolerance"],
@@ -213,12 +170,11 @@ rule PinfishClusterGFF: ## cluster transcripts in GFF
         "cluster_gff -p {params.min_iso_frac} -t {threads} -c {params.c} -d {params.d} -e {params.e} -a {output.cls_tab} {input.raw_gff} > {output.cls_gff}"
     
     
-    
 rule PinfishCollapseRawPartials: ## collapse clustered read artifacts
     input:
         cls_gff = rules.PinfishClusterGFF.output.cls_gff
     output:
-        cls_gff_col = PinfishClusteredCollapsedTranscripts
+        cls_gff_col = "Analysis/Pinfish/clustered_transcripts_collapsed.gff"
     params:
         d = config["collapse_internal_tol"],
         e = config["collapse_three_tol"],
@@ -227,15 +183,13 @@ rule PinfishCollapseRawPartials: ## collapse clustered read artifacts
        "collapse_partials -d {params.d} -e {params.e} -f {params.f} {input.cls_gff} > {output.cls_gff_col}"
     
     
-    
-    
 rule PinfishPolishClusters: ## polish read clusters
     input:
         cls_gff = rules.PinfishClusterGFF.output.cls_gff,
         cls_tab = rules.PinfishClusterGFF.output.cls_tab,
         bam = rules.Minimap2.output.bam
     output:
-        pol_trs = PinfishPolishedTranscriptFasta
+        pol_trs = "Analysis/Pinfish/polished_transcripts.fas"
     params:
         c = config["minimum_cluster_size"]
     threads: config["threads"]
@@ -248,7 +202,7 @@ rule MinimapPolishedClusters: ## map polished transcripts to genome
        index = rules.Minimap2Index.output.index,
        fasta = rules.PinfishPolishClusters.output.pol_trs,
     output:
-       pol_bam = MinimapPolishedBam
+       pol_bam = "Analysis/Minimap2/polished_reads_aln_sorted.bam"
     params:
         extra = config["minimap2_opts_polished"]
     threads: config["threads"]
@@ -263,7 +217,7 @@ rule PinfishPolishedBAM2GFF: ## convert BAM of polished transcripts to GFF
     input:
         bam = rules.MinimapPolishedClusters.output.pol_bam
     output:
-        pol_gff = PinfishPolishedTranscripts
+        pol_gff = "Analysis/Pinfish/polished_transcripts.gff"
     params:
         extra = config["spliced_bam2gff_opts_pol"]
     threads: config["threads"]
@@ -275,7 +229,7 @@ rule PinfishCollapsePolishedPartials: ## collapse polished read artifacts
     input:
         pol_gff = rules.PinfishPolishedBAM2GFF.output.pol_gff
     output:
-        pol_gff_col = PinfishPolishedCollapsedTranscripts
+        pol_gff_col = "Analysis/Pinfish/polished_transcripts_collapsed.gff"
     params:
         d = config["collapse_internal_tol"],
         e = config["collapse_three_tol"],
@@ -286,11 +240,24 @@ rule PinfishCollapsePolishedPartials: ## collapse polished read artifacts
 
 rule PrepareCorrectedTranscriptomeFasta: ## Generate corrected transcriptome.
     input:
-        genome = UnpackedReferenceFasta,
+        genome = "ReferenceData/"+UnpackedReferenceFasta,
         gff = rules.PinfishCollapsePolishedPartials.output.pol_gff_col,
     output:
-        fasta = PinfishCorrectedTranscriptome
+        fasta = "Analysis/Pinfish/corrected_transcriptome_polished_collapsed.fas"
     shell:"""
     gffread -g {input.genome} -w {output.fasta} {input.gff}
     """
     
+    
+rule GffCompare:
+    input:
+        reference = "ReferenceData/"+UnpackedGenomeGFF,
+        exptgff = rules.PinfishCollapsePolishedPartials.output.pol_gff_col
+    output:
+        "Analysis/GffCompare/nanopore.combined.gtf",
+        "Analysis/GffCompare/nanopore.loci",
+        "Analysis/GffCompare/nanopore.redundant.gtf",
+        "Analysis/GffCompare/nanopore.stats",
+        "Analysis/GffCompare/nanopore.tracking"
+    shell:
+        "gffcompare -r {input.reference} -R -M -C -K -o Analysis/GffCompare/nanopore {input.exptgff}"

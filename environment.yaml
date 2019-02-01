@@ -14,7 +14,7 @@ dependencies:
   - r =3.5.1
   - rstudio
   - nanopore-r-cdna-deseq2
-  - openjdk
+  - openjdk =10 # Module java.xml.bind deprecated in latest versions; dependency for IGV
   - gffcompare
   - gffread
   - igv =2.4.9  # version 2.4.16 places igv.jar into wrong directory

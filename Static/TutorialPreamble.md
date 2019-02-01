@@ -88,7 +88,7 @@ The goals included for this tutorial include:
 * To use the **`Pychopper`** software to select for the subset of cDNA sequence reads that are most likely to be full-length
 * To use the **`Pinfish`** software to annotate genes and their isoforms against the provided reference genome
 * To visualise patterns of genes and their isoforms using **`IGV`** and to super-impose these data with raw sequence reads
-* To explore the **`gffcompare`** software to select for known and novel isoforms within the gene annotation
+* To use the **`gffcompare`** software to select for known and novel isoforms within the gene annotation
 
 
 # Getting started and best practices
@@ -105,13 +105,36 @@ As a best practice this tutorial will separate primary cDNA sequence data (the b
 
 ![](Static/Images/FolderLayout.png) 
 
+The figure above shows an example of the folder layout after the tutorial has been cloned from `github` and reference genome data has been downloaded. 
+
+* `config.yaml` is the file that defines the tutorial configuration - this includes sequence files, reference genomes and parameters to be used for the analyses
+* `environment.yaml` defines the files that should be downloaded and installed the Conda environment required for the data analysis
+* `Nanopore_Pinfish_Tutorial.Rmd` is the **`Rmarkdown template`** that will be run to prepare the analysis report
+* `RawData` is a folder and your sequence files should be placed only in this folder. In the figure, a bzip2 compressed fastq file is described; this is the dataset provided with the tutorial
+* `ReferenceData` is a folder that contains genome references; this may be public or proprietary data but these data are used as a reference and are considered immutable within the analysis The folder contains a gzipped fasta format genome reference and gzipped GFF3 genome annotation
+* `Snakefile` is the workflow that will be used with the **`snakemake`** command to perform the data analysis
+* `Static` is a folder containing various static files; this includes figures used within the tutorial, citations and the text used for the report
+
 
 # Experimental setup
+
+![](Static/Images/ConfigYamlParameters.png) 
+
+The experimental design for the tutorial is described in a separate file called **`config.yaml`** - an example is provided with the tutorial and the head of the file is shown in the figure above.
+
+* **`genome_fasta`** defines the genome reference to which the sequence reads will be mapped. This can be either a URL to the file at e.g. ENSEMBL/NCBI or can be the name of the file already placed in the `ReferenceData` folder.
+* **`genome_annot`** defines the prior gene annotations for the genome sequence described by `genome_fasta`. These annotations will be used for classification of known and potentially novel transcripts. This can be either a URL or a file name for a file already placed in the `ReferenceData` folder.
+* **`raw_fastq`** defines the input sequences for the Pinfish workflow. This should be a fastq file, placed in the `RawData` folder that can optionally be gzip or bzip2 compressed.
+* **`pychopper`** is a boolean option (`TRUE` or `FALSE`) that defines if **`pychopper`** should be run.
+* **`minimum_cluster_size`** defines the number of sequence reads that must appear within a sequence cluster for it to be considered for further annotation and analysis
+* **`minimum_mapping_quality`** defines a threshold for the consideration of mapped sequence reads.
+
+Other parameters that can modified include parameters for controlling read mapping to the reference genome, expectations for intron and exon boundaries and rules for collapsing annotations. If you run the analysis without the **`pychopper`** sequence filtering it is recommended to modify the **`minimap2`** parameters which as provided force the method to consider only the forward transcript strand.
 
 
 ## Example dataset
 
-
+This tutorial is provided with an example dataset that demonstrates the objectives and capabilities of the workflow. The provided dataset is derived from the public domain. The `Nanopore WGS consortium` [citation] released human transcriptome data prepared from a cell line (GM12878) corresponding to the human reference genome (NA12878) https://github.com/nanopore-wgs-consortium/NA12878/blob/master/RNA.md. These publicly provided data were released in November 2017 and were produced from 12 MinION flowcells of cDNA sequencing. The provided BAM file of cDNA read mappings to the reference genome was used as a data source and the sequence reads mapping to Chromosome 20 have been extracted for the subset used in this tutorial. 
 
 
 
@@ -120,13 +143,15 @@ As a best practice this tutorial will separate primary cDNA sequence data (the b
 **`Snakemake`** is a workflow management system [citation].
 
 
-![](Static/Images/dag1.png) 
+![](Static/Images/dag.png) 
 
 
-The directed acyclic graph shown above describes the **`Snakemake`** defined workflow associated with this tutorial. The node at the bottom of the figure **`all`** directs the workflow. The core tasks involved with mapping sequence reads and the preparation of transcript clusters and their annotations have been copied from the **`pipeline-pinfish-analysis`** https://github.com/nanoporetech/pipeline-pinfish-analysis workflow.
+The directed acyclic graph shown above describes the **`Snakemake`** defined workflow associated with this tutorial. The core tasks involved with mapping sequence reads and the preparation of transcript clusters and their annotations have been utilised verbatim from the **`pipeline-pinfish-analysis`** https://github.com/nanoporetech/pipeline-pinfish-analysis workflow.
+
+The **`Snakemake`** workflow imports all of the configuration parameters from the **`config.yaml`** file that was described in the previous section. The `Snakefile` describes the analytical workflow and the locations of the required input and output files. To modify and adapt the workflow, it is recommended to first modify the `config.yaml` file.
 
 
-The tasks can be summarised as
+The **`Snakemake`** tasks can be summarised as
 
 1. Download (and decompress) the reference genome sequence against which sequence reads will be mapped.
 2. Download (and decompress) the reference genome annotations to be used for the analysis.
@@ -143,7 +168,7 @@ The tasks can be summarised as
 13. Compare the de novo produced transcript annotations with the reference genome annotations using **`GFFcompare`**. This is used to assess sensitivity and selectivity and can be used to identify apparently novel transcripts and gene isoforms.
 
 
-To run the **`snakemake`** 
+To run the **`snakemake`**  workflow
 
 ```
 # just type snakemake to run the workflow
@@ -152,7 +177,7 @@ To run the **`snakemake`**
 snakemake -j <NPROC>
 ```
 
-The **`-j <nprocs>`** flag instructs the **`snakemake`** process to use 8 threads. If you are running this tutorial on a laptop computer or an a large compute server, adjust this value to best correspond to your computer system.
+The **`-j <nprocs>`** flag instructs the **`snakemake`** process to use a specific number of threads. This value should be adjusted to best correspond to your computer system.
 
 
 

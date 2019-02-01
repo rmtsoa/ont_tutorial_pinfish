@@ -3,7 +3,7 @@
 tutorialText: TRUE
 
 ## Pipeline-specific parameters
-threads: 50
+threads: 16
 pychopper: TRUE
 
 # Input genome:
@@ -15,22 +15,17 @@ genome_annot: "http://ftp.ensembl.org/pub/release-94/gff3/homo_sapiens/Homo_sapi
 # CDNA or direct RNA reads in fastq format:
 raw_fastq: "NA12878-cDNA-1D.chr20.filt.fastq.bz2"
 
-
-# Extra option passed to minimap2 when generating index:
+# options passed to minimap2 during indexing:
 minimap_index_opts: "-k14"
 
 # Extra options passed to minimap2:
-#minimap2_opts: ""
-# Enable this for stranded data:
-minimap2_opts: "-uf"
+minimap2_opts: "-uf"  # required for stranded data e.g. when pychopper filtered
 
 # Minmum mapping quality:
 minimum_mapping_quality: 10
 
 # Options passed to spliced_bam2gff:
-#spliced_bam2gff_opts: ""
-# Enable this for stranded data:
-spliced_bam2gff_opts: "-s"
+spliced_bam2gff_opts: "-s"  # required for stranded data e.g. when pychopper filtered
 
 # -c parameter:
 minimum_cluster_size: 10
@@ -45,20 +40,12 @@ exon_boundary_tolerance: 10
 terminal_exon_boundary_tolerance: 30
 
 # Extra options passed to minimap2 when mapping polished reads:
-#minimap2_opts_polished: ""
-# Enable this for stranded data:
-minimap2_opts_polished: "-uf"
-# Enable this for SIRV data:
-#minimap2_opts_polished: "--splice-flank=no"
+minimap2_opts_polished: "-uf"   # required for stranded data e.g. when pychopper filtered
 
 # Options passed to spliced_bam2gff when converting alignments of polished reads:
-#spliced_bam2gff_opts_pol: ""
-# Enable this for stranded data:
-spliced_bam2gff_opts_pol: "-s"
+spliced_bam2gff_opts_pol: "-s"  # required for stranded data e.g. when pychopper filtered
 
 # Options passed to collapse_partials when collapsing fragmentation artifacts
-# in clustered and polished transcripts.
-
 # Internal exon boundary tolerance:
 collapse_internal_tol: 5
 
