@@ -7,13 +7,13 @@ threads: 16
 pychopper: TRUE
 
 # Input genome:
-genome_fasta: "http://ftp.ensembl.org/pub/release-94/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"
-genome_annot: "http://ftp.ensembl.org/pub/release-94/gff3/homo_sapiens/Homo_sapiens.GRCh38.94.chromosome.20.gff3.gz"
+genome_fasta: "http://ftp.ensembl.org/pub/release-95/fasta/drosophila_melanogaster/dna/Drosophila_melanogaster.BDGP6.dna.toplevel.fa.gz"
+genome_annot: "http://ftp.ensembl.org/pub/release-95/gtf/drosophila_melanogaster/Drosophila_melanogaster.BDGP6.95.gtf.gz"
 # genome_fasta could either be (1) a URL to a genome assembly e.g. at enseml / ncbi
 #                              (2) a filename corresponding to file that has been placed in the $ReferenceData folder
 
 # CDNA or direct RNA reads in fastq format:
-raw_fastq: "NA12878-cDNA-1D.chr20.filt.fastq.bz2"
+raw_fastq: "Dmel.4.filt.fastq"
 
 # options passed to minimap2 during indexing:
 minimap_index_opts: "-k14"

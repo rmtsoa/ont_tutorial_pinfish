@@ -121,9 +121,10 @@ rule Pychopper:
     pdf = "Analysis/Pychopper/Pychopper_report.pdf",
     fastq = "Analysis/Pychopper/"+UnpackedRawFastq+".pychop.fastq",
     stats = "Analysis/Pychopper/"+UnpackedRawFastq+".pychop.stats",
-    scores = "Analysis/Pychopper/"+UnpackedRawFastq+".pychop.scores"
+    scores = "Analysis/Pychopper/"+UnpackedRawFastq+".pychop.scores",
+    unclass = "Analysis/Pychopper/"+UnpackedRawFastq+".unclassified.fastq",
   run:
-    shell("cdna_classifier.py -b ReferenceData/cdna_barcodes.fas -x -r {output.pdf} -S {output.stats} -A {output.scores} {input} {output.fastq}")
+    shell("cdna_classifier.py -b ReferenceData/cdna_barcodes.fas -x -r {output.pdf} -S {output.stats} -A {output.scores} -u {output.unclass} {input} {output.fastq}")
     
     
 rule Minimap2: ## map reads using minimap2
