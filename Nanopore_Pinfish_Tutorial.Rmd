@@ -186,8 +186,9 @@ The **`pinfish`** software is run by the **`snakemake`** workflow management sof
 
 The **`pinfish`** workflow is described fully at its [github page](https://github.com/nanoporetech/pinfish) and at the [pipeline-pinfish-analysis page](https://github.com/nanoporetech/pipeline-pinfish-analysis). The working folder contains a number of intermediate files; the key result files include
 
-* **`corrected_transcriptome_polished_collapsed`** is a fasta format sequence file that describes the transcript consensus sequence following clustering and **`racon`** sequence correction
-* **`polished_transcripts_collapsed.gff`** is a gff format annotation file that describes the genes identified and their isoforms following clustering and sequence correction.
+* **`polished_transcripts_collapsed.gff`** is a gff format annotation file that describes the gene transcripts identified following clustering, sequence correction and transcript collapse within the **`pinfish`** workflow
+* **`corrected_transcriptome_polished_collapsed.fas`** is a fasta format sequence file that provides the DNA sequence for the identified transcripts. This is based on the **`gff`** annotations calculated and the reference genome provided. These fasta sequences are produced using the **`gffread`** software 
+
 
  
 
@@ -285,26 +286,26 @@ The Integrative Genomics Viewer (**`IGV`**) is a visualisation tool for genomics
 
 **`IGV`** can be started from the command line by using the command `igv`.
 
-In this tutorial we recommend that you instead encourage **`IGV`** to display sequence information around a gene of interest. In the last table a collection of potentially novel transcripts was displayed. We would like to explore the transcript information around this gene. The command below will open the **`IGV`** browser to the appropriate genome coordinates - in this example we are using the feature with coordinates `[Chr 20] Start=34089431, Stop=34112220`.
+In this tutorial we recommend that you instead encourage **`IGV`** to display sequence information around a gene of interest. In the last table a collection of potentially novel transcripts was displayed. We would like to explore the transcript information around this gene. The command below will open the **`IGV`** browser to the appropriate genome coordinates - in this example we are using the feature with coordinates `[Chr 4] Start=308097, Stop=310285`.
 
 ```
-igv -g ./ReferenceData/Homo_sapiens.GRCh38.dna.primary_assembly.fa \
-./Analysis/Minimap2/NA12878-cDNA-1D.chr20.filt.fastq.bam,\
+igv -g ./ReferenceData/Drosophila_melanogaster.BDGP6.dna.toplevel.fa \
+./Analysis/Minimap2/Dmel.4.filt.fastq.bam,\
 ./Analysis/Minimap2/polished_reads_aln_sorted.bam,\
-./ReferenceData/Homo_sapiens.GRCh38.94.chromosome.20.gff3,\
-./Analysis/Pinfish/polished_transcripts_collapsed.gff \
-20:34089431-34112220
+./ReferenceData/Drosophila_melanogaster.BDGP6.95.gtf,\
+./Analysis/Pinfish/polished_transcripts.gff \
+4:308097-310285
 ```
 
 ![](Static/Images/igv.png)
 
-The figure above shows a screenshot from the **`IGV`** genome browser. At the bottom, shaded in red, is a gene track for a transcript identified by **`Pinfish`** and annotated by **`GffCompare`** as representing a variant isoform. The figure shows the location of where the **`Pychopper`** mapped sequence reads have been anchored to the reference genome (along with a summary of depth-of-coverage). The gene tracks from the reference human genome are shaded in blue. A comparison of the Pinfish/GffCompare transcript with the annotated human gene annotation suggests that the transcript is from gene EIF2S2 and that the final exon (the gene is on the reverse DNA strand) is truncated relative to the reference annotation. This is supported by the sequence mapping.
-
-We recommend that novel transcripts and transcripts with an apparently novel structure are reviewed within a genome browser.
+The figure above shows a screenshot from the **`IGV`** genome browser. At the bottom, shaded in red, is an annotation track for the transcripts identified by **`Pinfish`** one of which has annotated by **`GffCompare`** as representing a variant isoform. The figure shows the location of where the **`Pychopper`** mapped sequence reads have been anchored to the reference genome (along with a summary of depth-of-coverage). The gene tracks from the reference human genome are shaded in blue. A comparison of the Pinfish/GffCompare transcript with the annotated Drosophila gene annotation shows that the transcripts are from gene *rad23* and one of the isoforms appears to be missing an exon when compared to the reference annotation.
 
 
 
 # Glossary of Terms
+
+* __IGV__ is the Integrated Genome Viewer. This software package can be used to explore a genome sequence, its annotated genes and mapping information from sequencing studies
 
 * __knit__ is the command to render an Rmarkdown file. The knitr package is used to embed code, the results of R analyses and their figures within the typeset text from the document. 
 
@@ -337,9 +338,9 @@ It is also worth recording the versions of the software that have been used for 
 \fontsize{8}{12}
 
 ```{r, engine='bash', echo=FALSE, comment=NA}
-source ~/.bashrc
-source activate Pinfish
+
 conda list "samtools|minimap2|snakemake|rstudio|pinfish|pychopper|racon|gffread|gffcompare|igv|openjdk"
+
 ```
 
 `r slurpContent("Static/TutorialPostamble.md")`

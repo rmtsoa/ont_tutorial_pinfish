@@ -77,11 +77,11 @@ cDNA and direct-RNA sequencing enable the preparation of full-length sequence tr
 
 The Oxford Nanopore Technologies protocols for preparing sequencing libraries from cDNA utilise oligonucleotide adapters. Different adapters are ligated to the 5' and 3' end of the cDNA molecule. The presence of both adapter sequences can be used to flag a probable full-length cDNA sequence and can be used to orientate the cDNA molecules relative to the native mRNA. These aspects of the library preparation are exploited by the [**`pychopper`**](https://github.com/nanoporetech/pychopper) software to filter for full-length sequences.
 
-These full-length transcript sequences can be mapped to a reference genome using a gapped alignment strategy. A transcribed cDNA sequence will map to a gene's exons. Genes can be found by filtering the mapping alignments for genomic regions with sufficient sequence depth-of-coverage. The differences in mapping coordinates at a single gene locus can be used to identify different gene isoforms. [**`Pinfish`**](https://github.com/nanoporetech/pinfish) implements such an approach to gene discovery. 
+These full-length transcript sequences can be mapped to a reference genome using a spliced alignment strategy. A transcribed cDNA sequence will map to a gene's exons. Genes can be found by filtering the mapping alignments for genomic regions with sufficient sequence depth-of-coverage. The differences in mapping coordinates at a single gene locus can be used to identify different gene isoforms. [**`Pinfish`**](https://github.com/nanoporetech/pinfish) implements such an approach to transcript discovery. 
 
 This tutorial demonstrates a workflow for the *de novo* annotation and characterisation of genes and their isoforms from cDNA sequence libraries. This utilises the **`pychopper`** and **`pinfish`** software. Additional steps are included using the **`IGV`** genome browser to visualise the gene annotations and the **`GffCompare`** software is used to select for known and potentially novel transcripts.
 
-A pre-prepared dataset is distributed with the tutorial. This contains a collection of cDNA sequences sampled from the publicly available [GM12878 cell-line transcriptome](https://github.com/nanopore-wgs-consortium/NA12878/blob/master/RNA.md). Using the provided transcriptome mapping BAM file, cDNA reads from Chromosome 20 have been selected and are analysed within the described workflow.
+A pre-prepared dataset is distributed with the tutorial. The fastq format data is from a PCR-based cDNA sequencing experiment. Using the Oxford Nanopore Technologies PCR cDNA kit (PCS-109), 1 ng of poly A+ Drosophila melanogaster mRNA ([Drosophila melanogaster, Adult Poly A+ RNA, Clontech](https://www.takarabio.com/products/cdna-synthesis/purified-total-rna-and-mrna/poly-a-rna-miscellaneous-species)) was reverse transcribed according to the PCS-109 protocol. cDNA molecules were amplified using 14 cycles of PCR and sequenced on a FLO-MIN106D flowcell for 24 hours. The base-called and QC passing sequence reads were mapped to the Drosophila genome (Drosophila_melanogaster.BDGP6 release 95) using *Minimap 2*. Reads mapping to chromosome 4 were selected and the largest clusters identified by the **`Pinfish`** analysis were downsampled to *500* members. This example dataset is a synthetic reduced dataset that will map mainly to chromosome 4. This dataset is sufficient for a demonstration of this workflow in a reasonable time on a standard computer.
 
 The goals included for this tutorial include:
 
@@ -133,10 +133,6 @@ The experimental design for the tutorial is described in the file called **`conf
 
 Other parameters that can modified include parameters for controlling read mapping to the reference genome, expectations for intron and exon boundaries and rules for collapsing annotations. 
 
-
-## Example dataset
-
-This tutorial is provided with an example dataset that demonstrates the objectives and capabilities of the workflow. The provided dataset is derived from the public domain. The `Nanopore WGS consortium` has deposited human transcriptome data prepared from a cell line (GM12878) corresponding to the human reference genome (NA12878) at https://github.com/nanopore-wgs-consortium/NA12878/blob/master/RNA.md. These publicly provided data were released in November 2017 and were produced from 12 MinION flowcells of cDNA sequencing. The provided BAM file of cDNA read mappings to the reference genome was used as a data source and the sequence reads mapping to Chromosome 20 have been extracted for the subset used in this tutorial. 
 
 
 # Snakemake

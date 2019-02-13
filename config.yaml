@@ -1,7 +1,4 @@
 ---
-## General pipeline parameters:
-tutorialText: TRUE
-
 ## Pipeline-specific parameters
 threads: 16
 pychopper: TRUE
@@ -54,4 +51,7 @@ collapse_five_tol: 5000
 
 # Three prime boundary tolerance:
 collapse_three_tol: 30
+
+## General pipeline parameters:
+tutorialText: TRUE
 
