@@ -1,19 +1,19 @@
 # Tutorial objectives
 
-The **Pinfish tutorial** is intended as a functional guide to demonstrate how the Oxford Nanopore Technologies **`Pinfish`** software may be used to annotate genes and their isoforms using long sequence read cDNA data and a reference genome. The workflow demonstrated compares the gene isoforms identified by **`Pinfish`** with known gene annotations. This enables the discovery of novel isoforms.
+The **pinfish tutorial** is intended as a functional guide to demonstrate how the Oxford Nanopore Technologies **`pinfish`** software may be used to annotate genes and their isoforms by using long sequence read cDNA data and a reference genome. The workflow described compares the gene isoforms identified by **`pinfish`** with known gene annotations. This enables the discovery of novel gene isoforms.
 
-The tutorial is provided with example data and the workflow can be used to address experimental questions that include 
+The tutorial is provided with example data and the tutorial workflow is used to address experimental questions that include 
 
-* What are the read characteristics for starting sequence collection?
-* which fraction of my sequence reads appear full length?
-* how many genes and transcripts are identified?
-* how to the identified transcripts correspond to the reference genome annotation?
-* which pinfish annotations are from novel genes or gene isoforms?
-* how can I visually explore a specific gene isoform?
+* What are the read characteristics for my starting sequence collection?
+* Which fraction of my sequence reads appear full length?
+* How many genes and transcripts are identified?
+* How do the identified transcripts correspond to the reference genome annotation?
+* Which pinfish annotations are from novel genes or gene isoforms?
+* How can I visually explore a specific gene isoform?
 
-Editing of the workflow's configuration file, **`config.yaml`** will allow the workflow to be run with different starting cDNA sequence libraries, reference genomes, and gene annotations.
+Editing of the workflow's configuration file, **`config.yaml`** will allow the workflow to be run with different starting cDNA sequence collections, reference genomes and gene annotations.
 
-## Methods used by the tutorial include 
+## Software tools used by the tutorial include 
 
 * **`R`** for statistical analysis and reporting
 * **`conda`** for management of bioinformatics software installations
@@ -29,22 +29,22 @@ Editing of the workflow's configuration file, **`config.yaml`** will allow the w
 ## The computational requirements include 
 
 * A computer running Linux (Centos7, Ubuntu 18_10, Fedora 29) 
-* At least 16 Gb RAM (when using the human genome example data) 
-* At least 15 Gb free disk space for analysis and indices
-* Runtime with provided example data - approximately 1 hour
+* At least 6 Gb RAM (when using the Drosophila example data) 
+* At least 2 Gb free disk space for analysis and indices
+* Runtime with provided example data - approximately 30 minutes
 
 
 \pagebreak
 
 # Software installation
 
-1. Most software dependecies are managed by the **`conda`** package manager. Please install as described at [https://conda.io/docs/install/quick.html](https://conda.io/docs/install/quick.html). You will beed to accept the license agreement during installation, and we recommend that you allow the conda installer to prepend its path to your `.bashrc` file when asked.
+1. The tutorial's software requirements are managed by the **`conda`** package manager. Please install **`conda`** as described at [https://conda.io/docs/install/quick.html](https://conda.io/docs/install/quick.html). You will need to accept the license agreement during installation, and we recommend that you allow the conda installer to prepend its path to your `.bashrc` file when asked.
 ```
     wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     bash Miniconda3-latest-Linux-x86_64.sh
     bash
 ```
-2. Download the **`Pinfish tutorial`** & example files into a folder named `Pinfish`. This tutorial requires the **`git-lfs`** large file support capabilities which should be installed through **`Conda`** first.
+2. Download the **`pinfish tutorial`** & example files into a folder named `Pinfish`. This tutorial requires the **`git-lfs`** large file support capabilities which should be installed through **`conda`** first.
 ```
     conda install -c conda-forge git-lfs
     git lfs install
@@ -71,26 +71,26 @@ Editing of the workflow's configuration file, **`config.yaml`** will allow the w
 
 # Introduction
 
-cDNA and direct-RNA sequencing enable the preparation of full-length sequence transcripts from a sample. Collections of cDNA sequences may be used for either differential gene expression analyses or for the characterisation and annotation of genes and their isoforms. In this tutorial we will look at a workflow that uses full-length cDNA sequence reads to discover genes and annotate their isoforms.
+cDNA and direct-RNA sequencing enable the preparation of full-length sequence transcripts from purified mRNA samples. Collections of cDNA sequences may be used for either differential gene expression analyses or for the characterisation and annotation of genes and their isoforms. In this tutorial we will look at a workflow that uses full-length cDNA sequence reads to discover genes and annotate their isoforms.
 
 [Oxford Nanopore Technologies](https://nanoporetech.com) provides a number of [sequencing solutions](https://nanoporetech.com/rna) to allow users to generate a "snapshot" of gene expression. This can be achieved by both sequencing the mRNA [directly](https://store.nanoporetech.com/catalog/product/view/id/167/s/direct-rna-sequencing-kit/category/28/), or via a complementary DNA ([cDNA](https://store.nanoporetech.com/catalog/product/view/id/177/s/cdna-pcr/category/28/)) proxy. In contrast to short read sequencing technologies, entire mRNA transcripts can be captured as single reads. 
 
-The Oxford Nanopore Technologies protocols for preparing sequencing libraries from cDNA utilise oligonucleotide adapters. Different adapters are ligated to the 5' and 3' end of the cDNA molecule. The presence of both adapter sequences can be used to flag a probable full-length cDNA sequence and can be used to orientate the cDNA molecules relative to the native mRNA. These aspects of the library preparation are exploited by the [**`pychopper`**](https://github.com/nanoporetech/pychopper) software to filter for full-length sequences.
+The Oxford Nanopore Technologies protocols for preparing sequencing libraries from cDNA utilise oligonucleotide adapters. Different adapters are ligated to the 5' and 3' end of the cDNA molecule. The presence of both adapter sequences can be used to flag a probable full-length cDNA sequence and can be used to orientate the cDNA molecules relative to the native mRNA. These aspects of the library preparation are exploited by the [**`pychopper`**](https://github.com/nanoporetech/pychopper) software to identify likely full-length sequences.
 
 These full-length transcript sequences can be mapped to a reference genome using a spliced alignment strategy. A transcribed cDNA sequence will map to a gene's exons. Genes can be found by filtering the mapping alignments for genomic regions with sufficient sequence depth-of-coverage. The differences in mapping coordinates at a single gene locus can be used to identify different gene isoforms. [**`Pinfish`**](https://github.com/nanoporetech/pinfish) implements such an approach to transcript discovery. 
 
 This tutorial demonstrates a workflow for the *de novo* annotation and characterisation of genes and their isoforms from cDNA sequence libraries. This utilises the **`pychopper`** and **`pinfish`** software. Additional steps are included using the **`IGV`** genome browser to visualise the gene annotations and the **`GffCompare`** software is used to select for known and potentially novel transcripts.
 
-A pre-prepared dataset is distributed with the tutorial. The fastq format data is from a PCR-based cDNA sequencing experiment. Using the Oxford Nanopore Technologies PCR cDNA kit (PCS-109), 1 ng of poly A+ Drosophila melanogaster mRNA ([Drosophila melanogaster, Adult Poly A+ RNA, Clontech](https://www.takarabio.com/products/cdna-synthesis/purified-total-rna-and-mrna/poly-a-rna-miscellaneous-species)) was reverse transcribed according to the PCS-109 protocol. cDNA molecules were amplified using 14 cycles of PCR and sequenced on a FLO-MIN106D flowcell for 24 hours. The base-called and QC passing sequence reads were mapped to the Drosophila genome (Drosophila_melanogaster.BDGP6 release 95) using *Minimap 2*. Reads mapping to chromosome 4 were selected and the largest clusters identified by the **`Pinfish`** analysis were downsampled to *500* members. This example dataset is a synthetic reduced dataset that will map mainly to chromosome 4. This dataset is sufficient for a demonstration of this workflow in a reasonable time on a standard computer.
+A pre-prepared dataset is distributed with the tutorial. The fastq format data is from a PCR-based cDNA sequencing experiment. Using the Oxford Nanopore Technologies PCR cDNA kit (PCS-109), 1 ng of poly A+ *Drosophila melanogaster* mRNA ([*Drosophila melanogaster*, Adult Poly A+ RNA, Clontech](https://www.takarabio.com/products/cdna-synthesis/purified-total-rna-and-mrna/poly-a-rna-miscellaneous-species)) was reverse transcribed according to the PCS-109 protocol. cDNA molecules were amplified using 14 cycles of PCR and sequenced on a FLO-MIN106D flowcell for 24 hours. The base-called and QC passing sequence reads were mapped to the Drosophila genome (Drosophila_melanogaster.BDGP6 release 95) using *minimap 2*. Reads mapping to chromosome 4 were selected and the largest clusters identified by the **`Pinfish`** analysis were downsampled to *500* members. This example dataset is a synthetic reduced dataset that will map mainly to chromosome 4. This dataset is sufficient for a demonstration of this workflow in a reasonable time on a standard computer.
 
 The goals included for this tutorial include:
 
 * To introduce a literate framework for analysing Oxford Nanopore cDNA data prepared using MinION, GridION or PromethION flowcells
-* To utilise best data management practices
+* To utilise best data-management practices
 * To provide basic cDNA sequence QC metrics enabling the review and consideration of the starting experimental data
 * To use the **`pychopper`** software to select full-length transcripts
 * To use the **`pinfish`** software to annotate genes and their isoforms
-* To visualise genes and their isoforms using **`IGV`*
+* To visualise genes and their isoforms using **`IGV`**
 * To use the **`GffCompare`** software to select for known and novel isoforms from the gene annotation
 
 
@@ -99,10 +99,6 @@ The goals included for this tutorial include:
 This tutorial requires a computer workstation running a Linux operating system. The workflow described has been tested using **`Fedora 29`**, **`Centos 7`**, and **`Ubuntu 18_10`**. This tutorial has been prepared using the **`Rmarkdown`** file format. This utilises *markdown* and the document also contains chunks of embedded **`R code`** that are dynamically executed during the report preparation - see @R-rmarkdown for more information.
 
 The described analytical workflow makes extensive use of the **`conda`** package management and the **`snakemake`** workflow software. These software packages and the functionality of **`Rmarkdown`** provide the source for a rich, reproducible and extensible tutorial document.
-
-The workflow contained within this Tutorial performs a bioinformatics analysis using the whole human genome as an example. There are some considerations in terms of memory and processor requirement. Indexing the whole human genome for sequence read mapping using **`minimap2`** (performed within **`pinfish`**) will use at least **`18 Gb`** of memory. The minimal recommended hardware setup for this tutorial is therefore an 4 threaded computer with at least 16 Gb of RAM and 15 Gb of storage space. 
-
-The **`conda`** package management software will coordinate the installation of the required bioinformatics software and their dependencies. 
 
 As a best practice this tutorial will separate primary cDNA sequence data (the base-called fastq files) from the **`Rmarkdown`** source, and the genome reference data. The analysis results and figures will also be placed in a separate working folders. The required layout for the primary and reference data is shown in the figure below. This minimal structure will be prepared over the next sections of this tutorial. The cDNA sequences to be analysed must be placed within the folder called **`RawData`**, the reference genome and annotation files must be placed in the folder named **`ReferenceData`**.
 
@@ -151,7 +147,7 @@ The **`Snakemake`** tasks can be summarised as
 
 1. Download the `fasta` format reference genome sequence to which sequence reads will be mapped
 2. Download the `GFF` format reference genome annotations to be used for the analysis
-4. Use the **`pychopper`** software to select for likely full-length cDNA transcript sequences and orientate them so that all reads are 5'-> 3'
+4. Use the **`pychopper`** software to select for likely full-length cDNA transcript sequences and orientate them so that the protein coding sequence is present on the forward cDNA strand
 5. Create a genome index for read mapping using the **`minimap2`** (@minimap22018) software
 6. Map the `pychopper`-filtered sequence reads against the reference genome using `minimap2`; sort and index the mapping results with **`samtools`** (@samtools2009)
 7. Prepare a GFF annotation from the mapped read BAM file using **`Pinfish`** `spliced_bam2gff`
@@ -176,7 +172,7 @@ The **`-j <nprocs>`** flag instructs the **`snakemake`** process to use a specif
 
 
 
-## Render the tutorial report
+## Prepare the tutorial report
 
 
 The analysis of the sequences specified within the  **`config.yaml`** file and rendered through the **`Rmarkdown`** file will be performed as part of the **`knit`** process. This will load the results from the **`snakemake`** process, will prepare a sequence analysis, render figures and prepare the report. The command below will `knit` the document to produce the html format report. 

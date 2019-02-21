@@ -7,27 +7,28 @@
 
 ### Overview:
 
-The **Pinfish tutorial** is intended as a functional guide to demonstrate how the Oxford Nanopore Technologies Pinfish software may be used to annotate genes, and their isoforms, against a reference genome sequence using long sequence read cDNA or direct-RNA data. A human cDNA dataset included with the tutorial demonstrates the key aspects of the workflow, and introduces **`gffcompare`** to enable the comparison of called datasets with already known genome annotations. This enables discovery and characterisation of novel isoforms. 
+The **Pinfish tutorial** is intended as a functional guide to demonstrate how the Oxford Nanopore Technologies Pinfish software may be used to annotate genes, and their isoforms, against a reference genome sequence using long sequence read cDNA or direct-RNA data. A drosophila cDNA dataset included with the tutorial demonstrates the key aspects of the workflow, and introduces **`GffCompare`** to enable the comparison of identified gene isoforms with reference genome annotations. This enables discovery and characterisation of novel isoforms. 
 
 ### Features:
 
 Sufficient information is provided in the tutorial such that the workflow can be tested, validated, and replicated. 
 
-* What is the quality of the starting sequence collection?
-* which fraction of the sequence reads appear full length?
-* how do these full-length sequence reads map against the reference genome?
-* visualisation of annotated genes and corresponding mapped sequence reads
-* selection of novel and rare gene isoforms
+* What are the read characteristics for my starting sequence collection?
+* Which fraction of my sequence reads appear full length?
+* How many genes and transcripts are identified?
+* How do the identified transcripts correspond to the reference genome annotation?
+* Which pinfish annotations are from novel genes or gene isoforms?
+* How can I visually explore a specific gene isoform?
 
 ******************
 
 # 2. Getting Started:
 
-This tutorial relies on **`Conda`** for the installion of the **`R`**, **`Rstudio`**, **`minimap2`**, and **`samtools`** software. It is necessary to have **`git-lfs`** installed on your system to download the larger tutorial sequence and metadata files that are stored in Git Large File Storage. Please see [accompanying Git Large File Storage note](https://github.com/nanoporetech/bioinformatics-tutorials/blob/master/git-lfs.md) for further information on how this may be best installed.
+This tutorial relies on **`conda`** for the installion of software that includes **`R`**, **`Rstudio`**, **`minimap2`**, **`samtools`**, **`IGV`**, **`pychopper`**, **`pinfish`** and **`GffCompare`**. It is necessary to have **`git-lfs`** installed on your system to download the accompanying long-read sequence and metadata files that are stored using Git Large File Storage. Please see [accompanying Git Large File Storage note](https://github.com/nanoporetech/bioinformatics-tutorials/blob/master/git-lfs.md) for further information on how this may be best installed.
 
 ### Input and Output: 
 
-This tutorial uses the code contained within the Github repository and an experimental design file (config.yaml) that processes a provided cDNA sequence file (in fastq format) with the downstream pinfish analytical workflow. 
+This tutorial uses the code contained within the Github repository and an experimental design file (config.yaml) that processes the provided cDNA sequence file (in fastq format) with the pinfish analytical workflow. 
 
 ### Dependencies:
 
@@ -39,19 +40,19 @@ Other dependencies include
 
 ### Installation:
 
-1. Most software dependecies are managed though **`conda`**, install as described at  <br> [https://conda.io/docs/install/quick.html](https://conda.io/docs/install/quick.html).
+1. The tutorial's software requirements are managed by the **`conda`** package manager. Please install **`conda`** as described at [https://conda.io/docs/install/quick.html](https://conda.io/docs/install/quick.html). You will need to accept the license agreement during installation, and we recommend that you allow the conda installer to prepend its path to your `.bashrc` file when asked.
 ```
     wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     bash Miniconda3-latest-Linux-x86_64.sh
     bash
 ```
-2. Download Nanopore tutorial & example files into folder named `Pinfish`. This tutorial requires the **`git-lfs`** large file support capabilities; this should be installed first through **`Conda`**
+2. Download the **`pinfish tutorial`** & example files into a folder named `Pinfish`. This tutorial requires the **`git-lfs`** large file support capabilities which should be installed through **`conda`** first.
 ```
     conda install -c conda-forge git-lfs
     git lfs install
     git clone https://github.com/nanoporetech/ont_tutorial_pinfish.git Pinfish
 ```
-3. Change into the created `pinfish` sub-directory of the NanoporeTutorials
+3. Change your working directory into the new `Pinfish` folder
 ```
     cd Pinfish
 ```
@@ -67,7 +68,7 @@ Other dependencies include
 
 #### Compilation From Source
 
-This tutorial requires **`Racon`** and **`Pinfish`** - instructions for their installation is included in the instructions in the **`installation`** guide above
+This tutorial should not require the compilation of any software. The **`conda`* software management system should manage all required bioinformatics software dependencies.
 
 
 
@@ -80,11 +81,7 @@ In your Conda environment, and in the tutorial working directory,
 ```
     snakemake -j 4 all
 ```
-3. Use the **`gffcompare`** tool to compare the annotated gene features to the previously downloaded **`gff`** file
-```
-gffcompare -r ReferenceData/Homo_sapiens.GRCh38.94.chromosome.20.gff3 -R -M Analysis/pinfish/polished_transcripts_collapsed.gff
-```
-4. . Render the report using results from the analysis above
+3. Render the report using results from the analysis above
 ```
     R --slave -e 'rmarkdown::render("Nanopore_Pinfish_Tutorial.Rmd", "html_document")'
 ```
@@ -104,7 +101,7 @@ The report can be prepared by "knit" from the GUI as shown in the figure
 
 # 3. Results
 
-This tutorial workflow will produce a rich description of your sequence library characteristics and the results from the Pinfish isoform analysis. Please visit the tutorial page at [https://community.nanoporetech.com/knowledge/bioinformatics]( https://community.nanoporetech.com/knowledge/bioinformatics) for more information
+This tutorial workflow will produce a rich description of your sequence library characteristics and will summarise the key results from the Pinfish isoform analysis. Please visit the tutorial page at [https://community.nanoporetech.com/knowledge/bioinformatics]( https://community.nanoporetech.com/knowledge/bioinformatics) for more information
 
 ******************
 
@@ -114,7 +111,7 @@ This tutorial workflow will produce a rich description of your sequence library 
 
 © 2019 Oxford Nanopore Technologies Ltd.
 
-ont_tutorial_pinfish and other Nanopore tutorials are distributed by Oxford Nanopore Technologies under the terms of the MPL-2.0 license.
+**`ont_tutorial_pinfish`** and other Nanopore tutorials are distributed by Oxford Nanopore Technologies under the terms of the MPL-2.0 license.
 
 ### FAQs:
 
@@ -132,8 +129,6 @@ ont_tutorial_pinfish and other Nanopore tutorials are distributed by Oxford Nano
 * __Rmarkdown__ is an extension to markdown. Functional R code can be embedded in a plain-text document and subsequently rendered to other formats including the PDF format of this report.
 
 * __QV__  the quality value - -log10(p) that any given base is incorrect. QV may be either at the individual base level, or may be averaged across whole sequences
-
-* __sequencing_summary.txt__ a summary file describing sequence characteristics following base calling with the Guppy / Albacore software.
 
 
 ### References and Supporting Information:

@@ -1,6 +1,6 @@
 
 
-# Customize the tutorial and explore your own data
+# Customise the tutorial and explore your own data
 
 Final thoughts; behind this **`Rmarkdown`** file is a modest amount of **`R code`** - please explore the **`Rmarkdown`** template; modify it, and run with your own samples.
 
