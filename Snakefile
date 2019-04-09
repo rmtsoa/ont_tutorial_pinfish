@@ -21,6 +21,7 @@ ReferenceData = "ReferenceData"
 
 def checkExternalLinks(xlink):
   yfile = xlink
+  downloadSource[yfile]="nanoporetech.com"
   p = re.compile("(^http:|^ftp:|^https:)")
   if (p.search(xlink)):
     yfile = os.path.basename(xlink)
