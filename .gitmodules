@@ -1,3 +1,6 @@
 [submodule "pinfish"]
 	path = pinfish
 	url = https://github.com/nanoporetech/pinfish.git
+[submodule "racon"]
+	path = racon
+	url = https://github.com/isovic/racon
